@@ -17,14 +17,14 @@ Als Ergebnis entsteht eine `.mcaddon`-Datei (Resource Pack plus Behavior Pack) o
 ## So kommt das Add-on ins Spiel (Android)
 
 1. In der PixelWerkstatt im Tab **Paket** auf **Komplettpaket erstellen** tippen.
-2. In der App **Dateien** → **Downloads** die Datei gedrückt halten → **Öffnen mit** → **Minecraft**. Minecraft importiert das Pack.
+2. Chrome lädt die Datei direkt als `.mcaddon` bzw. `.mcpack` herunter, ohne angehängtes `.zip`, Umbenennen ist nicht nötig. Im Hinweis „Download abgeschlossen“ auf **Öffnen** tippen und **Minecraft** wählen (mit „Immer“ öffnet Android solche Dateien künftig direkt mit Minecraft). Minecraft importiert das Pack. Alternativ in der App **Dateien** → **Downloads** die Datei antippen.
 3. In Minecraft die Welt bearbeiten → **Verhaltenspakete** (Behavior Packs) → das Pack aktivieren. Das zugehörige Resource Pack wird automatisch mit aktiviert.
 
 Gut zu wissen: Ein aktives Behavior Pack schaltet Erfolge (Achievements) in dieser Welt ab. Das Resource Pack allein („Nur Aussehen“) tut das nicht.
 
 ## Technik (für alle, die mitlesen)
 
-- Eine einzige `index.html` mit Inline-JavaScript, kein Build-Schritt. Die Packs werden im Browser mit JSZip gebaut und per Download ausgegeben.
+- Eine einzige `index.html` mit Inline-JavaScript, kein Build-Schritt. Die Packs werden im Browser mit JSZip gebaut und per Download ausgegeben, mit dem MIME-Typ `application/octet-stream`, damit Chrome auf Android die Dateiendung `.mcaddon`/`.mcpack` nicht durch `.zip` ergänzt.
 - Alle Items und Mobs liegen im Namespace `wb:`. Die Pack-UUIDs bleiben stabil, nur die Pack-Version zählt hoch, damit Minecraft ein vorhandenes Pack ersetzt, statt ein zweites anzulegen.
 - Alle Einstellungen, Zeichnungen und Sounds speichert der Browser des Geräts (`localStorage`). Sie liegen nie in diesem Repo.
 - Bibliotheken und Schriften liegen lokal in `lib/` (three.js r128, JSZip 3.10.1) und `fonts/` (Pixelify Sans, Rubik). Beim Besuch wird nichts von Fremdservern geladen.
