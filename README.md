@@ -14,6 +14,7 @@ Web-Werkzeug für **Minecraft Bedrock Edition**: Es baut eigene Add-ons (Behavio
 - **Eigene Mobs:** Neue Mobs selbst anlegen und benennen, auf Basis einer Bauform: Vogel, Schmetterling, Eule, Zweibeiner, Häschen, Maus, Pfau, Reittier, großes Reittier und Drache (tameable und rideable), Fisch und Qualle (Wasser-Mobs mit Unterwasser-Navigation). Biom für die Spawn Rule wählbar, oder nur per Spawn Egg.
 - **Blocktexturen:** 621 Vanilla-Block-Sorten (über 1.100 Blöcke inklusive Treppen, Stufen und Mauern) mit Suche. Je Seite umfärben, Muster wählen (körnig, Ziegel, Bretter, Holz, Erz) oder Pixel für Pixel bemalen, mit 3D-Würfel-Vorschau. Die Texturen ersetzen im Resource Pack die Originale.
 - **Pixel-Editor** mit 3D-Vorschau.
+- **Sounds direkt aufnehmen:** Ruf- und Hurt-Sound jedes Mobs werden direkt auf der Seite über das Mikrofon aufgenommen (MediaRecorder, bis 4 Sekunden, mit Stopp-Knopf) und als WAV (16 kHz, mono) ins Resource Pack gelegt. Eine vorhandene Audiodatei kann weiterhin gewählt werden.
 - **Paket-Auswahl:** Anfangs ist nichts markiert. Beim Export wählt man „Nur markierte“ (was in den Tabs markiert ist) oder „Alle Elemente“ (alles aus allen Tabs; bei Blöcken alle veränderten Texturen).
 
 Als Ergebnis entsteht eine `.mcaddon`-Datei (Resource Pack plus Behavior Pack) oder eine `.mcpack`-Datei (nur Resource Pack, „Nur Aussehen“).
@@ -31,7 +32,7 @@ Gut zu wissen: Ein aktives Behavior Pack schaltet Erfolge (Achievements) in dies
 - Eine einzige `index.html` mit Inline-JavaScript, kein Build-Schritt. Die Packs werden im Browser mit JSZip gebaut und per Download ausgegeben, mit dem MIME-Typ `application/octet-stream`, damit Chrome auf Android die Dateiendung `.mcaddon`/`.mcpack` nicht durch `.zip` ergänzt.
 - Alle Items und Mobs liegen im Namespace `wb:`. Eigene Items und Mobs bekommen ihre Kennung einmalig aus dem Namen (z. B. `wb:qualle`); spätere Umbenennungen ändern nur den Anzeigenamen. Die Pack-UUIDs bleiben stabil, nur die Pack-Version zählt hoch, damit Minecraft ein vorhandenes Pack ersetzt, statt ein zweites anzulegen.
 - Blocktexturen werden über denselben Pfad wie im Vanilla Resource Pack ersetzt (`textures/blocks/…`, bei Laub auch die `_opaque`-Variante und das Inventarbild). Für die Blockliste enthält die Seite nur Block-Kennungen, die deutschen Blocknamen und die Durchschnittsfarbe der Originaltexturen (ermittelt aus Mojangs öffentlichen `bedrock-samples`, Stand 1.26.50) als Startfarbe. Bilder aus Minecraft werden nicht mitgeliefert.
-- Alle Einstellungen, Zeichnungen und Sounds speichert der Browser des Geräts (`localStorage`). Sie liegen nie in diesem Repo.
+- Alle Einstellungen, Zeichnungen und Sounds speichert der Browser des Geräts (`localStorage`). Sie liegen nie in diesem Repo. Mikrofon-Aufnahmen werden nur im Browser verarbeitet und nirgendwohin gesendet.
 - Bibliotheken und Schriften liegen lokal in `lib/` (three.js r128, JSZip 3.10.1) und `fonts/` (Pixelify Sans, Rubik). Beim Besuch wird nichts von Fremdservern geladen.
 - Das Manifest gibt eine Mindest-Engine-Version (`min_engine_version`) an. Ziel ist jeweils die aktuelle öffentliche Bedrock-Version.
 
