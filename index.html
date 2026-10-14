@@ -125,6 +125,9 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--surface);borde
 .choice button b{font-family:var(--font-display);font-size:18px;font-weight:500}
 .choice button span{font-size:13px;color:var(--ink-2)}
 .choice button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent);background:var(--surface-2)}
+.recbar{height:8px;background:var(--surface);border-radius:4px;overflow:hidden}
+.recbar span{display:block;height:100%;width:0;background:var(--danger)}
+.btn.rec-on{background:var(--danger);border-color:var(--danger);color:#fff}
 .markbar{display:flex;align-items:center;gap:10px;background:var(--surface-2);border-radius:6px;padding:10px 12px}
 </style>
 </head><body>
@@ -759,7 +762,7 @@ function renderPaket(M){const sm=selection('markiert'),sa=selection('alle');
 
 /* ---------------- Editor-Blatt ---------------- */
 let sheetEl=null;
-function closeSheet(){if(!sheetEl)return;p3Unmount();sheetEl.remove();sheetEl=null;document.body.style.overflow='';render();}
+function closeSheet(){if(!sheetEl)return;recStop(true);p3Unmount();sheetEl.remove();sheetEl=null;document.body.style.overflow='';render();}
 function openSheet(id){closeSheet();document.body.style.overflow='hidden';sheetEl=document.createElement('div');sheetEl.className='sheet';document.body.append(sheetEl);
   const[kind,key]=id.split(/-(.+)/);let title='';
   if(kind==='hud')title=key==='heart'?'Herzen':key==='hunger'?'Hunger':'Hotbar';
@@ -877,7 +880,7 @@ function editMob(B,key){const m=MOBS[key],s=state.mobs[key];layoutMob(m);
       <p class="status" style="margin:0">Bauform: ${esc(FORMS[s.custom.form]?FORMS[s.custom.form].label:'')}</p>`:''}
       <div><h3>Farben</h3><div class="parts" id="parts">${Object.entries(m.parts).map(([p,[lab]])=>`<label class="part"><input type="color" data-part="${p}" value="${s.colors[p]}">${esc(lab)}</label>`).join('')}</div></div>
       <div class="row"><button class="btn small" id="rnd">Zufallsfarben</button><button class="btn small" id="std">Standardfarben</button></div></div>
-    <div class="card" style="display:grid;gap:10px"><h3>Geräusche</h3><p class="status" style="margin:0">Nimm mit dem Tablet ein Geräusch auf. Höchstens 3 Sekunden werden verwendet, Stille am Anfang wird abgeschnitten.</p>
+    <div class="card" style="display:grid;gap:10px"><h3>Geräusche</h3><p class="status" style="margin:0">Tippe auf <b>Aufnehmen</b> und mach das Geräusch. Nach 4 Sekunden hört die Aufnahme von selbst auf, oder du tippst vorher auf <b>Stopp</b>. Stille am Anfang wird abgeschnitten, ins Spiel kommen höchstens 3 Sekunden. Beim ersten Mal fragt das Tablet, ob die Seite das Mikrofon benutzen darf.</p>
       ${soundRow('ruf','Ruf','Macht das Tier ab und zu von selbst')}${soundRow('aua','Aua','Wenn das Tier getroffen wird')}</div></div>
     <div class="col card" id="pe"></div>`;
   let atlas=mobAtlas(key);let atlasCv=pxCanvas(atlas.px,atlas.texW,atlas.texH);
@@ -937,18 +940,41 @@ function editBlock(B,id){const b=BLK_BY_ID[id];const groups=blkGroups(b);let cur
   $('#on',B).onchange=e=>{if(e.target.checked)state.blocks[id]={on:true};else delete state.blocks[id];save();};}
 
 function soundRow(k,lab,desc){return`<div class="sound" data-snd="${k}"><div class="row" style="justify-content:space-between"><b>${lab}</b><span class="chip" data-st></span></div><span class="status" style="min-height:0">${desc}</span>
-  <div class="row"><label class="btn small" style="text-align:center">Aufnehmen<input type="file" accept="audio/*" capture hidden data-rec></label><label class="btn small" style="text-align:center">Datei wählen<input type="file" accept="audio/*" hidden data-file></label>
+  <div class="recbar" data-bar hidden><span></span></div>
+  <div class="row"><button class="btn small" data-rec>● Aufnehmen</button><label class="btn small" style="text-align:center">Datei wählen<input type="file" accept="audio/*" hidden data-file></label>
   <button class="btn small" data-play>Abspielen</button><button class="btn small danger" data-del>Löschen</button></div></div>`;}
 function bindSounds(B,key){const s=state.mobs[key];s.sounds=s.sounds||{};
   B.querySelectorAll('[data-snd]').forEach(el=>{const k=el.dataset.snd;const st=$('[data-st]',el);
     const upd=()=>{const has=!!s.sounds[k];st.textContent=has?'aufgenommen':'kein Geräusch';st.className='chip'+(has?' ok':'');$('[data-play]',el).disabled=!has;$('[data-del]',el).disabled=!has;};upd();
-    const handle=async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;st.textContent='wird verarbeitet …';
-      try{s.sounds[k]=await processAudio(f);save();upd();toast('Geräusch gespeichert.');}catch(err){upd();toast('Das Geräusch ließ sich nicht lesen. Versuche eine andere Aufnahme (zum Beispiel .m4a, .mp3 oder .wav).');}};
-    $('[data-rec]',el).onchange=handle;$('[data-file]',el).onchange=handle;
+    const use=async(f,recorded)=>{st.textContent='wird verarbeitet …';
+      try{s.sounds[k]=await processAudio(f);save();upd();toast('Geräusch gespeichert.');if(recorded)new Audio('data:audio/wav;base64,'+s.sounds[k]).play().catch(()=>{});}
+      catch(err){upd();toast(recorded?'Es war nichts zu hören. Mach das Geräusch lauter oder näher am Tablet und versuch es nochmal.':'Das Geräusch ließ sich nicht lesen. Versuche eine andere Datei (zum Beispiel .m4a, .mp3 oder .wav).');}};
+    $('[data-file]',el).onchange=e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(f)use(f,false);};
+    $('[data-rec]',el).onclick=()=>recToggle(el,blob=>use(blob,true));
     $('[data-play]',el).onclick=()=>{if(s.sounds[k])new Audio('data:audio/wav;base64,'+s.sounds[k]).play().catch(()=>{});};
     $('[data-del]',el).onclick=()=>{delete s.sounds[k];save();upd();};});}
 
 /* ---------------- Audio ---------------- */
+/* Direkt über das Mikrofon aufnehmen (MediaRecorder). Nur eine Aufnahme gleichzeitig, höchstens 4 Sekunden.
+   Die Aufnahme bleibt im Browser, nichts wird verschickt. */
+const REC={el:null,mr:null,stream:null,timer:null,cancel:false};
+const REC_MAX=4000;
+function recStop(cancel){if(!REC.mr)return;REC.cancel=!!cancel;clearTimeout(REC.timer);try{if(REC.mr.state!=='inactive')REC.mr.stop();}catch(e){}}
+function recUi(el,on){const b=$('[data-rec]',el),bar=$('[data-bar]',el);if(!b)return;b.classList.toggle('rec-on',on);b.textContent=on?'■ Stopp':'● Aufnehmen';bar.hidden=!on;
+  const sp=$('span',bar);sp.style.transition='none';sp.style.width='0';if(on){void sp.offsetWidth;sp.style.transition=`width ${REC_MAX}ms linear`;sp.style.width='100%';}}
+async function recToggle(el,done){
+  if(REC.el===el){recStop(false);return;}
+  if(REC.el)recStop(true);
+  if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)){toast('Auf diesem Gerät geht Aufnehmen hier leider nicht. Nimm „Datei wählen“.');return;}
+  let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});}
+  catch(e){toast(e&&(e.name==='NotAllowedError'||e.name==='SecurityError')?'Die Seite darf das Mikrofon nicht benutzen. Tippe in Chrome oben links neben der Adresse auf das Symbol, dann auf Berechtigungen und erlaube das Mikrofon.':'Das Mikrofon ließ sich nicht starten. Prüfe, ob die Seite das Mikrofon benutzen darf (Symbol links neben der Adresse, dann Berechtigungen) und ob gerade eine andere App das Mikrofon benutzt.');return;}
+  const type=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch(e){return false;}});
+  let mr;try{mr=type?new MediaRecorder(stream,{mimeType:type}):new MediaRecorder(stream);}catch(e){stream.getTracks().forEach(t=>t.stop());toast('Aufnehmen hat nicht geklappt. Nimm „Datei wählen“.');return;}
+  const chunks=[];Object.assign(REC,{el,mr,stream,cancel:false});
+  mr.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+  mr.onstop=()=>{stream.getTracks().forEach(t=>t.stop());const cancel=REC.cancel;Object.assign(REC,{el:null,mr:null,stream:null});recUi(el,false);
+    if(!cancel&&chunks.length)done(new Blob(chunks,{type:mr.mimeType||type||'audio/webm'}));};
+  mr.start();recUi(el,true);REC.timer=setTimeout(()=>recStop(false),REC_MAX);}
 async function processAudio(file){const buf=await file.arrayBuffer();const AC=window.AudioContext||window.webkitAudioContext;const ac=new AC();
   const dec=await new Promise((res,rej)=>{const p=ac.decodeAudioData(buf,res,rej);if(p&&p.catch)p.catch(rej);});try{ac.close();}catch(e){}
   const ch0=dec.getChannelData(0);let start=0;while(start<ch0.length&&Math.abs(ch0[start])<0.02)start++;start=Math.max(0,start-Math.floor(dec.sampleRate*.02));
