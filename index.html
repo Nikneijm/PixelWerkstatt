@@ -6,7 +6,13 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Rubik:wght@400;500;700&display=swap">
+<style>/* Schriften liegen lokal im Ordner fonts/ (kein Abruf bei Google, damit keine Besucher-IPs an Dritte gehen) */
+@font-face{font-family:'Pixelify Sans';font-style:normal;font-weight:500;font-display:swap;src:url(fonts/pixelify-sans-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Pixelify Sans';font-style:normal;font-weight:700;font-display:swap;src:url(fonts/pixelify-sans-latin-700-normal.woff2) format('woff2')}
+@font-face{font-family:'Rubik';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/rubik-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Rubik';font-style:normal;font-weight:500;font-display:swap;src:url(fonts/rubik-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Rubik';font-style:normal;font-weight:700;font-display:swap;src:url(fonts/rubik-latin-700-normal.woff2) format('woff2')}
+</style>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <style>
 /* Layout: Werkbank – Reiter oben, Inventar-Kacheln als Raster, Editor als Vollbild-Blatt */
@@ -101,6 +107,8 @@ ol.steps b{font-weight:700}
 .confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--surface-2);padding:10px;border-radius:6px}
 code{font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:3px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+.fuss{margin-top:32px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;line-height:1.55;color:var(--ink-2)}
+.fuss p{margin:0 0 8px}
 </style>
 </head><body>
 <div class="wrap">
@@ -114,11 +122,15 @@ code{font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:3p
     <button role="tab" data-tab="paket" aria-selected="false">Paket</button>
   </nav>
   <main id="main"></main>
+  <footer class="fuss">
+    <p>PixelWerkstatt ist ein inoffizielles Fan-Werkzeug. Es steht in keiner Verbindung zu Mojang Studios oder Microsoft und wird von ihnen nicht genehmigt oder unterstützt. „Minecraft“ ist eine Marke von Mojang Studios bzw. Microsoft.</p>
+    <p>Diese Seite sammelt keine Daten. Einstellungen, Zeichnungen und Geräusche bleiben nur im Browser deines Geräts. Ausgeliefert wird die Seite über GitHub Pages; dabei verarbeitet GitHub technisch bedingt die IP-Adresse der Besucher.</p>
+  </footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="lib/three.min.js"></script>
+<script src="lib/jszip.min.js"></script>
 <script>
 "use strict";
 /* ---------------- Vorlagen (Pixelbilder) ---------------- */
