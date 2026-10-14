@@ -492,9 +492,9 @@ function renderPaket(M){
     </div>
     <div class="group"><h2>So kommt das Paket ins Spiel</h2>
     <ol class="steps">
-      <li>Tippe auf <b>Komplettpaket erstellen</b> und bestätige das Speichern.</li>
-      <li>Öffne die App <b>Dateien</b> und dort <b>Downloads</b>. Endet der Name der neuen Datei auf <code>.zip</code>: gedrückt halten, <b>Umbenennen</b> wählen und nur <code>.zip</code> am Ende löschen, sodass der Name auf <code>.mcaddon</code> endet (beim Aussehen-Paket auf <code>.mcpack</code>).</li>
-      <li>Tippe die Datei an und öffne sie mit <b>Minecraft</b>. Minecraft meldet „Import erfolgreich“.</li>
+      <li>Tippe auf <b>Komplettpaket erstellen</b>. Die Datei wird geladen.</li>
+      <li>Unten erscheint der Hinweis „Download abgeschlossen“. Tippe dort auf <b>Öffnen</b> und wähle <b>Minecraft</b>. Minecraft meldet „Import erfolgreich“. Tipp: Bei „Immer“ fragt das Tablet beim nächsten Mal nicht mehr nach.</li>
+      <li>Hinweis verpasst? Öffne die App <b>Dateien</b> → <b>Downloads</b>, tippe die Datei an und wähle <b>Minecraft</b>.</li>
       <li>In Minecraft: Welt bearbeiten → <b>Verhaltenspakete</b> → „${esc(state.name)} Verhalten“ aktivieren. Die passende Optik wird automatisch mit aktiviert.</li>
       <li>Nach Änderungen einfach neu erstellen und importieren. Die Version zählt automatisch hoch. Zeigt die Welt noch das alte Aussehen, das Paket in den Welt-Einstellungen kurz entfernen und wieder aktivieren.</li>
     </ol></div>
@@ -688,12 +688,13 @@ async function exportPack(full){
   say('Paket wird gebaut …',true);
   try{
     const nm=safeName(state.name);const zip=await buildZip(full);
-    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE'});
+    /* MIME application/octet-stream: Chrome auf Android haengt sonst ".zip" an den Dateinamen an (JSZip setzt standardmaessig application/zip). So bleibt .mcaddon/.mcpack erhalten und Android bietet Minecraft zum Oeffnen an. */
+    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/octet-stream'});
     if(!downloadsNs){
       const direct=nm+(full?'.mcaddon':'.mcpack');let ok=false;
       try{const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=direct;a.rel='noopener';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),120000);ok=true;}catch(e){}
       state.version++;save();
-      if(!window.claude){if(msg)msg.innerHTML=ok?`<div class="note" style="display:grid;gap:6px"><b>Download gestartet: „${esc(direct)}“ (Version ${state.version})</b><span>Öffne die App <b>Dateien</b> → <b>Downloads</b> und tippe die Datei an. Wähle <b>Minecraft</b> zum Öffnen.</span></div>`:'<p class="status" style="color:var(--danger)">Der Download ließ sich nicht starten. Öffne die Datei in Chrome und versuche es nochmal.</p>';
+      if(!window.claude){if(msg)msg.innerHTML=ok?`<div class="note" style="display:grid;gap:6px"><b>Download gestartet: „${esc(direct)}“ (Version ${state.version})</b><span>Tippe unten im Hinweis „Download abgeschlossen“ auf <b>Öffnen</b> und wähle <b>Minecraft</b>. Hinweis verpasst? In der App <b>Dateien</b> → <b>Downloads</b> die Datei antippen.</span></div>`:'<p class="status" style="color:var(--danger)">Der Download ließ sich nicht starten. Öffne die Datei in Chrome und versuche es nochmal.</p>';
         if(tab==='paket'){const c=[...document.querySelectorAll('.card .chip')].pop();if(c)c.textContent='Version '+state.version;}return;}
       let denied=false;try{const p=window.claude&&claude.use?await claude.use('permissions'):null;if(p)denied=(await p.state('downloads'))==='denied';}catch(e){}
       if(msg)msg.innerHTML=`<div class="note" style="display:grid;gap:8px"><b>${ok?'Download gestartet: „'+esc(direct)+'“':'Speichern ist hier nicht möglich.'}</b>
