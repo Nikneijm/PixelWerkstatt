@@ -16,7 +16,7 @@ Web-Werkzeug für **Minecraft Bedrock Edition**: Es baut eigene Add-ons (Behavio
 - **Blocktexturen:** 621 Vanilla-Block-Sorten (über 1.100 Blöcke inklusive Treppen, Stufen und Mauern) mit Suche. Je Seite umfärben, Muster wählen (körnig, Ziegel, Bretter, Holz, Erz) oder Pixel für Pixel bemalen, mit 3D-Würfel-Vorschau. Die Texturen ersetzen im Resource Pack die Originale.
 - **Pixel-Editor** mit 3D-Vorschau.
 - **Sounds direkt aufnehmen:** Ruf- und Hurt-Sound jedes Mobs werden direkt auf der Seite über das Mikrofon aufgenommen (MediaRecorder, bis 4 Sekunden, mit Stopp-Knopf) und als WAV (16 kHz, mono) ins Resource Pack gelegt. Eine vorhandene Audiodatei kann weiterhin gewählt werden.
-- **Paket-Auswahl:** Anfangs ist nichts markiert. Beim Export wählt man „Nur markierte“ (was in den Tabs markiert ist) oder „Alle Elemente“ (alles aus allen Tabs; bei Blöcken alle veränderten Texturen).
+- **Paket-Auswahl:** Anfangs ist nichts markiert. Markiert wird direkt auf jeder Kachel (Häkchen oben rechts), ein ganzer Bereich oder ein ganzer Tab mit „Alle markieren“. Beim Export wählt man „Nur markierte“ (was in den Tabs markiert ist) oder „Alle Elemente“ (alles aus allen Tabs; bei Blöcken alle veränderten Texturen).
 
 Als Ergebnis entsteht eine `.mcaddon`-Datei (Resource Pack plus Behavior Pack) oder eine `.mcpack`-Datei (nur Resource Pack, „Nur Aussehen“).
 
