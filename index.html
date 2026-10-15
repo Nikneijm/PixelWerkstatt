@@ -1024,7 +1024,7 @@ function infoFor(kind,key){
     if(d.kind==='tool'){const t=TOOLS[(it.custom&&it.custom.tool)||'pickaxe']||TOOLS.pickaxe;was=`Ein Werkzeug zum Abbauen, es arbeitet wie eine ${t.label}.`;ex.push('Wie schnell es abbaut, stellst du unten ein.','Hält 600 Einsätze.');}
     if(d.kind==='throw'){was='Zum Werfen: Tippe mit dem Ding in der Hand auf den Bildschirm, dann fliegt es wie ein Schneeball.';ex.push('Es macht keinen Schaden.');}
     if(d.kind==='fly'){was='Zum Fliegen: Halte es in der Hand, dann fällst du ganz langsam.';ex.push('Tippe auf den Bildschirm, dann zieht dich ein Windstoß nach oben. So oft du willst.');}
-    if(d.kind==='wear'){was='Ein Rucksack zum Anziehen. Er sitzt auf deinem Rücken.';ex.push('Anziehen: Im Inventar in das Rüstungsfeld für die Brust legen.','Er belegt das Brust-Feld. Einen Brustpanzer kannst du dann nicht gleichzeitig tragen.','Er schützt nicht, und man kann nichts hineinlegen. Für Sachen gibt es den Rollkoffer.','Oben stellst du die Farben für den Rücken ein, unten malst du das Bild im Inventar.');}
+    if(d.kind==='wear'){was='Ein Rucksack zum Anziehen. Er sitzt auf deinem Rücken.';ex.push('Anziehen: Im Inventar in das Rüstungsfeld für die Brust legen.','Er belegt das Brust-Feld. Einen Brustpanzer kannst du dann nicht gleichzeitig tragen.','Er schützt nicht, und man kann nichts hineinlegen. Für Sachen gibt es den Rollkoffer.','Unter „Was malst du?“ wählst du, ob du den Rucksack selbst oder sein Bild im Inventar bemalst.');}
     if(d.kind==='misc'){was='Ein Gegenstand zum Sammeln, Herumtragen und Verschenken.';ex.push('Man hält ihn in der Hand, aufstellen kann man ihn nicht.');}
     if(own)was='Dein eigenes Teil. '+was;
     return[was,ex.concat(SUCHE,VOLL)];}
@@ -1139,18 +1139,34 @@ function editItem(B,key){const it=state.items[key],d=ITEMS[key],own=!!it.custom;
       ${own?`<p class="status" style="margin:0">Art: ${esc(ITEM_KINDS[d.kind].label)}</p><div id="del"></div>`:''}</div>
       ${W?`<div class="card" style="display:grid;gap:12px"><h3>Farben am Rücken</h3><div class="parts" id="parts">${Object.entries(W.parts).map(([p,[lab]])=>`<label class="part"><input type="color" data-part="${p}" value="${it.colors[p]}">${esc(lab)}</label>`).join('')}</div>
         <div class="row"><button class="btn small" id="std">Standardfarben</button></div></div>`:''}</div>
-    <div class="col card" id="pe"></div>`;
+    ${W?`<div class="col"><div class="card" style="display:grid;gap:10px"><h3>Was malst du?</h3><div class="row" id="ziel">
+      <button class="btn" data-z="model" aria-pressed="true">Rucksack</button><button class="btn" data-z="icon" aria-pressed="false">Bild im Inventar</button></div></div>
+      <div class="card" id="pe"></div></div>`:'<div class="col card" id="pe"></div>'}`;
   p3Mount($('#pv',B));
-  /* Tragbares Item: Vorschau zeigt das 3D-Modell für den Rücken, der Pixel-Editor malt das Bild im Inventar */
-  const show=px=>{if(W){const a=mobAtlas(key);p3ShowMob(key,pxCanvas(a.px,a.texW,a.texH));}else p3ShowSprite(px,16);};show(it.px);
-  const pe=PixelEditor($('#pe',B),{w:16,h:16,px:it.px,hint:W?'Das ist das Bild im Inventar.':'',onChange:(px,f)=>{it.px=px;if(!W)p3ShowSprite(px,16);if(f)save();}});
-  if(W){$('#parts',B).oninput=e=>{const p=e.target.dataset.part;if(!p)return;it.colors[p]=e.target.value;show();save();};
-    $('#std',B).onclick=()=>{for(const[p,v]of Object.entries(W.parts))it.colors[p]=v[1];it.edits={};B.querySelectorAll('[data-part]').forEach(i=>i.value=it.colors[i.dataset.part]);show();save();toast('Die Farben sind wieder wie am Anfang.');};}
+  let pe,ziel='model';
+  if(!W){p3ShowSprite(it.px,16);pe=PixelEditor($('#pe',B),{w:16,h:16,px:it.px,onChange:(px,f)=>{it.px=px;p3ShowSprite(px,16);if(f)save();}});}
+  else{/* Tragbares Item: entweder den Rucksack selbst bemalen (Bastelbogen wie bei Deko, 3D dreht mit)
+       oder das Bild im Inventar (16×16, die 3D-Vorschau zeigt dann dieses Bild). */
+    layoutMob(W);let atlas=null,atlasCv=null;
+    const regions=[];for(const b of W.bones)for(const c of b.cubes)for(const r of Object.values(faceRects(c)))regions.push(r);
+    const refreshTex=()=>{const g=atlasCv.getContext('2d');g.clearRect(0,0,atlasCv.width,atlasCv.height);g.drawImage(pxCanvas(atlas.px,atlas.texW,atlas.texH),0,0);if(P3.tex)P3.tex.needsUpdate=true;};
+    const mount=()=>{B.querySelectorAll('#ziel [data-z]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.z===ziel));
+      if(ziel==='icon'){p3ShowSprite(it.px,16);pe=PixelEditor($('#pe',B),{w:16,h:16,px:it.px,hint:'Das ist das Bild im Inventar.',onChange:(px,f)=>{it.px=px;p3ShowSprite(px,16);if(f)save();}});return;}
+      atlas=mobAtlas(key);atlasCv=pxCanvas(atlas.px,atlas.texW,atlas.texH);p3ShowMob(key,atlasCv);
+      pe=PixelEditor($('#pe',B),{w:atlas.texW,h:atlas.texH,px:atlas.px,big:true,cell:8,regions,
+        describe:(x,y)=>{const o=atlas.owner[y*atlas.texW+x];return o?`${FACE_DE[o.face]} · ${W.parts[o.part]?W.parts[o.part][0]:''}`:'';},
+        hint:'Das ist der Rucksack, aufgeklappt wie ein Bastelbogen. Fahre über ein Feld, um zu sehen, welcher Teil es ist.',
+        onChange:(px,f)=>{atlas.px=px;refreshTex();if(f){const base=generateMob(key,it.colors).px;const ed={};for(let i=0;i<px.length;i++)if(px[i]!==base[i])ed[i]=px[i];it.edits=ed;save();}}});};
+    mount();
+    $('#ziel',B).onclick=e=>{const b=e.target.closest('[data-z]');if(!b||b.dataset.z===ziel)return;ziel=b.dataset.z;mount();};
+    const recolor=()=>{if(ziel==='model'){atlas=mobAtlas(key);pe.set(atlas.px);refreshTex();}save();};
+    $('#parts',B).oninput=e=>{const p=e.target.dataset.part;if(!p)return;it.colors[p]=e.target.value;recolor();};
+    $('#std',B).onclick=()=>{for(const[p,v]of Object.entries(W.parts))it.colors[p]=v[1];it.edits={};B.querySelectorAll('[data-part]').forEach(i=>i.value=it.colors[i.dataset.part]);recolor();toast('Farben und Pixel am Rucksack sind wieder wie am Anfang.');};}
   $('#on',B).onchange=e=>{it.on=e.target.checked;save();};
   $('#nm',B).oninput=e=>{it.name=cleanName(e.target.value)||d.name;$('.sheet-bar h2').textContent=it.name;save();};
   const v=$('#val',B);if(v)v.oninput=e=>{it.value=+e.target.value;$('#vv',B).textContent=it.value;save();};
   const tl=$('#tool',B);if(tl)tl.onchange=e=>{it.custom.tool=e.target.value;save();};
-  $('#tp',B).onchange=e=>{if(!e.target.value)return;it.px=tplPx(e.target.value);pe.set(it.px);p3ShowSprite(it.px,16);save();e.target.value='';};
+  $('#tp',B).onchange=e=>{if(!e.target.value)return;it.px=tplPx(e.target.value);if(!W||ziel==='icon'){pe.set(it.px);p3ShowSprite(it.px,16);}else toast('Das Bild im Inventar ist neu.');save();e.target.value='';};
   if(own)deleteRow(B,'Dieses Item wirklich löschen? In Welten, in denen es schon benutzt wurde, verschwindet es nach dem nächsten Paket.',()=>{delete state.items[key];syncCustoms();save();closeSheet();toast('Item gelöscht.');});}
 
 /* Neues eigenes Item anlegen */
