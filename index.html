@@ -45,7 +45,7 @@ h2{font-family:var(--font-display);font-weight:500;font-size:22px;margin:0 0 4px
 h3{font-size:15px;margin:0 0 6px;font-weight:700}
 p.lead{color:var(--ink-2);margin:0 0 14px;max-width:62ch}
 nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;gap:6px;padding-block:8px;overflow-x:auto;scrollbar-width:none}
-nav.tabs button{flex:1 0 auto;font-family:var(--font-display);font-size:17px;padding:10px 16px;border:2px solid var(--line);background:var(--surface);color:var(--ink);border-radius:4px;cursor:pointer}
+nav.tabs button{flex:1 0 auto;font-family:var(--font-display);font-size:17px;padding:10px 13px;border:2px solid var(--line);background:var(--surface);color:var(--ink);border-radius:4px;cursor:pointer}
 nav.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 section.panel{display:grid;gap:22px;margin-top:10px}
 .group{display:grid;gap:10px}
@@ -142,6 +142,8 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--surface);borde
 .grid.klein .mark{width:32px;height:32px;top:4px;right:4px;font-size:18px}
 .ghead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .ghead>h2,.ghead>h3{margin:0}
+/* Download-Symbol (eigene Pixelzeichnung, Farbe folgt dem Text): zeigt, dass hier eine Datei geladen wird */
+.ico{width:1em;height:1em;fill:currentColor;shape-rendering:crispEdges;vertical-align:-.14em;margin-right:.4em;flex:none}
 </style>
 </head><body>
 <div class="wrap">
@@ -155,7 +157,7 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--surface);borde
     <button role="tab" data-tab="deko" aria-selected="false">Deko</button>
     <button role="tab" data-tab="tiere" aria-selected="false">Tiere</button>
     <button role="tab" data-tab="bloecke" aria-selected="false">Blöcke</button>
-    <button role="tab" data-tab="paket" aria-selected="false">Paket</button>
+    <button role="tab" data-tab="paket" aria-selected="false"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M7 1h2v6h4v2h-2v2H9v1H7v-1H5V9H3V7h4zM1 10h2v3h10v-3h2v5H1z"/></svg>Paket</button>
   </nav>
   <main id="main"></main>
   <footer class="fuss">
@@ -746,6 +748,7 @@ const TH={};function mobThumb(key){if(!P3.ok)return null;try{
   TH.scene.remove(o.root);o.root.traverse(x=>{if(x.geometry)x.geometry.dispose();});o.tex.dispose();return url;}catch(e){return null;}}
 
 /* ---------------- Pixel-Editor ---------------- */
+const DL_ICON='<svg class="ico" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M7 1h2v6h4v2h-2v2H9v1H7v-1H5V9H3V7h4zM1 10h2v3h10v-3h2v5H1z"/></svg>';
 const BASE_COLORS=['#000000','#ffffff','#8b8b8b','#e3242b','#f08c2a','#f5d63d','#5fb547','#2c9459','#3fd0ff','#3f7fd6','#7a4fd0','#e66fb4','#7a4e2d','#e2b48c'];
 function PixelEditor(host,opts){
   const pe={w:opts.w,h:opts.h,px:opts.px.slice(),tool:'pen',color:opts.color||'#e3242b',mirror:false,undo:[],redo:[],cell:opts.cell||Math.max(8,Math.floor(Math.min(420,(host.clientWidth||340)-24)/opts.w))};
@@ -940,7 +943,7 @@ function renderPaket(M){const sm=selection('markiert'),sa=selection('alle');
         <button data-m="alle" aria-pressed="${state.auswahl==='alle'}"><b>Alle Elemente</b><span>Alles aus allen Tabs: ${esc(selSummary(sa))}</span></button></div>
         <p class="status" style="margin:6px 0 0">Markieren kannst du alles direkt auf der Kachel mit dem Häkchen oben rechts, ganze Bereiche mit „Alle markieren“. Von Blöcken kommen nur Seiten mit, die du verändert hast.</p></div>
       <div class="row"><span class="chip">Version ${state.version}</span></div>
-      <div class="row"><button class="btn primary" id="pk-full">Komplettpaket erstellen</button><button class="btn" id="pk-rp">Nur Aussehen erstellen</button></div>
+      <div class="row"><button class="btn primary" id="pk-full">${DL_ICON}Komplettpaket erstellen</button><button class="btn" id="pk-rp">${DL_ICON}Nur Aussehen erstellen</button></div>
       <p class="status" style="margin:0">Komplettpaket: alles inklusive neuer Items, Tiere und Deko. In dieser Welt gibt es dann keine Erfolge.<br>Nur Aussehen: Herzen, Rüstung, Hunger, XP-Leiste, Hotbar, umgestaltete Items und Blöcke (ohne neue Items, Tiere und Deko). Erfolge bleiben an.</p>
       <div id="pk-msg"></div>
     </div>
