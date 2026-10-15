@@ -128,7 +128,19 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--surface);borde
 .recbar{height:8px;background:var(--surface);border-radius:4px;overflow:hidden}
 .recbar span{display:block;height:100%;width:0;background:var(--danger)}
 .btn.rec-on{background:var(--danger);border-color:var(--danger);color:#fff}
-.markbar{display:flex;align-items:center;gap:10px;background:var(--surface-2);border-radius:6px;padding:10px 12px}
+.markbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;background:var(--surface);border:2px solid var(--line);border-radius:6px;padding:10px 12px}
+.markbar span{font-size:14px;color:var(--ink-2)}
+/* Kachel mit Markier-Häkchen (eigener Knopf, damit Antippen des Häkchens nicht das Fenster öffnet) */
+.tile-w{position:relative;display:grid}
+.tile-w>.tile{height:100%;padding-top:16px}
+.tile-w.on>.tile{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mark{position:absolute;top:6px;right:6px;width:40px;height:40px;border-radius:8px;border:2px solid var(--line);background:var(--surface);color:transparent;font:700 22px/1 var(--font-body);display:grid;place-items:center;cursor:pointer;padding:0;z-index:1}
+.mark::after{content:'✓'}
+.mark:hover{border-color:var(--accent)}
+.mark[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.grid.klein .mark{width:32px;height:32px;top:4px;right:4px;font-size:18px}
+.ghead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ghead>h2,.ghead>h3{margin:0}
 </style>
 </head><body>
 <div class="wrap">
@@ -743,25 +755,47 @@ function PixelEditor(host,opts){
 let tab='anzeige';
 $('#tabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(!b)return;tab=b.dataset.tab;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));try{b.scrollIntoView({inline:'nearest',block:'nearest'});}catch(e){}render();};
 function spriteURL(px,n){return pxCanvas(px,n,n).toDataURL();}
-function tile(id,img,name,on){return`<button class="tile" data-open="${id}"><span class="slot"><img alt="" src="${img}"></span><span class="name">${esc(name)}</span>${on?'<span class="state on">✓ markiert</span>':''}</button>`;}
+function markBtn(id,name,on){return`<button class="mark" data-mark="${id}" aria-pressed="${!!on}" aria-label="${esc(name)} markieren"></button>`;}
+function tile(id,img,name,on){return`<div class="tile-w${on?' on':''}"><button class="tile" data-open="${id}"><span class="slot"><img alt="" src="${img}"></span><span class="name">${esc(name)}</span></button>${markBtn(id,name,on)}</div>`;}
+/* Markierung je Kachel-Kennung lesen und setzen (gleiche Kennungen wie beim Öffnen: hud-, item-, ov-, mob-, deko-, blk-) */
+function markGet(id){const[k,key]=id.split(/-(.+)/);
+  if(k==='hud')return!!state.hud[key].on;if(k==='item')return!!state.items[key].on;if(k==='ov')return!!state.overrides[key].on;
+  if(k==='mob')return!!state.mobs[key].on;if(k==='deko')return!!state.deko[key].on;if(k==='blk')return!!(state.blocks[key]&&state.blocks[key].on);return false;}
+function markSet(id,v){const[k,key]=id.split(/-(.+)/);
+  if(k==='hud')state.hud[key].on=v;if(k==='item')state.items[key].on=v;if(k==='ov')state.overrides[key].on=v;
+  if(k==='mob')state.mobs[key].on=v;if(k==='deko')state.deko[key].on=v;if(k==='blk'){if(v)state.blocks[key]={on:true};else delete state.blocks[key];}}
+/* Häkchen auf der Seite nachziehen, ohne neu zu zeichnen (die Scrollposition bleibt) */
+function markRefresh(root){root.querySelectorAll('[data-mark]').forEach(b=>{const on=markGet(b.dataset.mark);b.setAttribute('aria-pressed',on);b.parentElement.classList.toggle('on',on);});
+  root.querySelectorAll('[data-markall]').forEach(b=>{const ids=markIds(b.closest(b.dataset.markall==='tab'?'section':'.group'));const all=ids.length&&ids.every(markGet);
+    b.textContent=all?'Alle abwählen':'Alle markieren';b.dataset.all=all?'1':'';const c=b.parentElement.querySelector('[data-count]');if(c)c.textContent=`${ids.filter(markGet).length} von ${ids.length} markiert`;});}
+function markIds(el){return el?[...new Set([...el.querySelectorAll('[data-mark]')].map(b=>b.dataset.mark))]:[];}
+/* Knöpfe „Alle markieren“ je Bereich und für den ganzen Tab ergänzen */
+function markUi(root,tabBar){
+  root.querySelectorAll('.group').forEach(g=>{if(g.hasAttribute('data-noall')||!g.querySelector('[data-mark]')||g.querySelector(':scope>.ghead'))return;const h=g.querySelector(':scope>h2,:scope>h3');if(!h)return;
+    const w=document.createElement('div');w.className='ghead';h.replaceWith(w);w.append(h);const b=document.createElement('button');b.className='btn small';b.dataset.markall='group';w.append(b);});
+  const sec=root.querySelector('section.panel');
+  if(tabBar&&sec&&!sec.querySelector(':scope>.markbar')&&sec.querySelector('[data-mark]')){const bar=document.createElement('div');bar.className='markbar';
+    bar.innerHTML=`<span data-count></span><button class="btn small" data-markall="tab"></button>`;sec.prepend(bar);}
+  markRefresh(root);}
 function newTile(id,name){return`<button class="tile neu" data-open="${id}"><span class="slot">+</span><span class="name">${esc(name)}</span></button>`;}
 function mobTile(k){const s=state.mobs[k];const has=Object.keys(s.sounds||{}).length;return tile('mob-'+k,thumbCache[k]||(thumbCache[k]=mobThumb(k)||spriteURL(new Array(256).fill(s.colors[Object.keys(s.colors)[0]]),16)),mobName(k)+(has?' ♪':''),s.on);}
 const mobName=k=>(state.mobs[k]&&state.mobs[k].name)||MOBS[k].name;
 function blkTile(b){const i=blkFace(b,'S');const ed=blkEdited(b);const on=!!(state.blocks[b[0]]&&state.blocks[b[0]].on);
   const t=BLK_TEX[i],c=t[2]&1?mixHex('#'+t[1],'#5d9e3a'):'#'+t[1];
   const img=ed?`<img alt="" src="${spriteURL(blkPx(i),16)}">`:`<span class="blockfarbe" style="background:${c}"></span>`;
-  return`<button class="tile" data-open="blk-${b[0]}"><span class="slot">${img}</span><span class="name">${esc(b[1])}</span>${on?'<span class="state on">✓ markiert</span>':ed?'<span class="state">geändert</span>':''}</button>`;}
+  /* Markieren nur bei veränderten Blöcken: unveränderte bringen nichts ins Paket */
+  return`<div class="tile-w${on&&ed?' on':''}"><button class="tile" data-open="blk-${b[0]}"><span class="slot">${img}</span><span class="name">${esc(b[1])}</span>${ed?'<span class="state">geändert</span>':''}</button>${ed?markBtn('blk-'+b[0],b[1],on):''}</div>`;}
 let blkQuery='';
 function renderBloecke(M){
   M.innerHTML=`<section class="panel"><div class="group"><h2>Blöcke</h2><p class="lead">Gib den Blöcken aus Minecraft neue Farben. Tippe einen Block an, wähle eine Farbe und sieh ihn dir in 3D an. Im Spiel sehen danach alle Blöcke dieser Sorte so aus.</p>
     <input type="search" id="bq" placeholder="Block suchen, zum Beispiel Gras oder Stein" aria-label="Block suchen" value="${esc(blkQuery)}"></div><div id="blist" style="display:grid;gap:22px"></div></section>`;
   const draw=()=>{const q=blkQuery.trim().toLowerCase();const L=$('#blist');
     if(q){const hits=BLOCKS.filter(b=>b[1].toLowerCase().includes(q)||b[0].includes(q.replace(/ +/g,'_')));
-      L.innerHTML=`<div class="group"><h3>${hits.length} Treffer</h3>${hits.length?`<div class="grid klein">${hits.slice(0,150).map(blkTile).join('')}</div>`:'<p class="status">Nichts gefunden. Versuch ein anderes Wort.</p>'}${hits.length>150?'<p class="status">Es gibt noch mehr Treffer. Such genauer.</p>':''}</div>`;return;}
-    const mine=BLOCKS.filter(b=>blkEdited(b)||(state.blocks[b[0]]&&state.blocks[b[0]].on));
+      L.innerHTML=`<div class="group" data-noall><h3>${hits.length} Treffer</h3>${hits.length?`<div class="grid klein">${hits.slice(0,150).map(blkTile).join('')}</div>`:'<p class="status">Nichts gefunden. Versuch ein anderes Wort.</p>'}${hits.length>150?'<p class="status">Es gibt noch mehr Treffer. Such genauer.</p>':''}</div>`;markUi(M,false);return;}
+    const mine=BLOCKS.filter(blkEdited);
     L.innerHTML=`${mine.length?`<div class="group"><h3>Deine Blöcke</h3><div class="grid klein">${mine.map(blkTile).join('')}</div></div>`:''}
-      <div class="group"><h3>Beliebte Blöcke</h3><div class="grid klein">${BLK_POP.map(k=>blkTile(BLK_BY_ID[k])).join('')}</div></div>
-      <div class="group"><h3>Alle Blöcke (${BLOCKS.length})</h3><div class="grid klein">${BLOCKS.map(blkTile).join('')}</div></div>`;};
+      <div class="group" data-noall><h3>Beliebte Blöcke</h3><div class="grid klein">${BLK_POP.map(k=>blkTile(BLK_BY_ID[k])).join('')}</div></div>
+      <div class="group" data-noall><h3>Alle Blöcke (${BLOCKS.length})</h3><div class="grid klein">${BLOCKS.map(blkTile).join('')}</div></div>`;markUi(M,false);};
   draw();$('#bq').oninput=e=>{blkQuery=e.target.value;draw();};}
 const thumbCache={};
 function render(){const M=$('#main');
@@ -779,7 +813,11 @@ function render(){const M=$('#main');
       <div class="grid">${Object.keys(state.mobs).filter(k=>state.mobs[k].custom&&MOBS[k]).map(mobTile).join('')}${newTile('new-mob','Neues Tier')}</div></div></section>`;}
   if(tab==='bloecke')renderBloecke(M);
   if(tab==='paket')renderPaket(M);
-  M.onclick=e=>{const b=e.target.closest('[data-open]');if(b)openSheet(b.dataset.open);};}
+  if(tab!=='paket'&&tab!=='bloecke')markUi(M,true);
+  M.onclick=e=>{const m=e.target.closest('[data-mark]');if(m){markSet(m.dataset.mark,!markGet(m.dataset.mark));save();markRefresh(M);return;}
+    const a=e.target.closest('[data-markall]');if(a){const v=!a.dataset.all;for(const id of markIds(a.closest(a.dataset.markall==='tab'?'section':'.group')))markSet(id,v);save();markRefresh(M);
+      toast(v?'Alles in diesem Bereich ist markiert.':'Markierungen in diesem Bereich entfernt.');return;}
+    const b=e.target.closest('[data-open]');if(b)openSheet(b.dataset.open);};}
 
 function itemTile(k){return tile('item-'+k,spriteURL(state.items[k].px,16),state.items[k].name,state.items[k].on);}
 function ovTile(o){return tile('ov-'+o.file,spriteURL(state.overrides[o.file].px,16),o.label,state.overrides[o.file].on);}
@@ -815,7 +853,7 @@ function renderPaket(M){const sm=selection('markiert'),sa=selection('alle');
       <div><h3>Was soll ins Paket?</h3><div class="choice" id="pk-sel">
         <button data-m="markiert" aria-pressed="${state.auswahl==='markiert'}"><b>Nur markierte</b><span>Nur was du in den Tabs markiert hast: ${esc(selSummary(sm))}</span></button>
         <button data-m="alle" aria-pressed="${state.auswahl==='alle'}"><b>Alle Elemente</b><span>Alles aus allen Tabs: ${esc(selSummary(sa))}</span></button></div>
-        <p class="status" style="margin:6px 0 0">Markieren kannst du jedes Element in seinem Fenster mit dem Häkchen „Markiert“. Von Blöcken kommen nur Seiten mit, die du verändert hast.</p></div>
+        <p class="status" style="margin:6px 0 0">Markieren kannst du alles direkt auf der Kachel mit dem Häkchen oben rechts, ganze Bereiche mit „Alle markieren“. Von Blöcken kommen nur Seiten mit, die du verändert hast.</p></div>
       <div class="row"><span class="chip">Version ${state.version}</span></div>
       <div class="row"><button class="btn primary" id="pk-full">Komplettpaket erstellen</button><button class="btn" id="pk-rp">Nur Aussehen erstellen</button></div>
       <p class="status" style="margin:0">Komplettpaket: alles inklusive neuer Items, Tiere und Deko. In dieser Welt gibt es dann keine Erfolge.<br>Nur Aussehen: Herzen, Hunger, Hotbar, umgestaltete Items und Blöcke (ohne neue Items, Tiere und Deko). Erfolge bleiben an.</p>
@@ -1243,7 +1281,7 @@ function selection(mode){const all=mode==='alle';const pick=o=>all||!!(o&&o.on);
     for(const c of(BLK_CARRIED[i]||[])){const cp=blkPath(c);if(!state.blockTex[cp])tex.set(cp,px);}};
   let blocks=0;
   if(all){for(let i=0;i<BLK_TEX.length;i++)addTex(i);blocks=BLOCKS.filter(blkEdited).length;}
-  else for(const id of Object.keys(state.blocks)){const b=BLK_BY_ID[id];if(!b||!state.blocks[id].on)continue;blocks++;for(const i of new Set(Object.values(b[2])))addTex(i);}
+  else for(const id of Object.keys(state.blocks)){const b=BLK_BY_ID[id];if(!b||!state.blocks[id].on||!blkEdited(b))continue;blocks++;for(const i of new Set(Object.values(b[2])))addTex(i);}
   return{items,mobs,deko,overrides,hud,tex,blocks};}
 
 async function exportPack(full){
