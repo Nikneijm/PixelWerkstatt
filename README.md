@@ -17,6 +17,7 @@ Web-Werkzeug für **Minecraft Bedrock Edition**: Es baut eigene Add-ons (Behavio
 - **Pixel-Editor** mit 3D-Vorschau, für Touch gebaut: Knöpfe in Fingergröße (44 px), Pinch-to-Zoom und Verschieben mit zwei Fingern, ohne dabei zu malen, sichtbare Erklärung zum Werkzeug „Farbe tauschen“.
 - **Sounds direkt aufnehmen:** Ruf- und Hurt-Sound jedes Mobs werden direkt auf der Seite über das Mikrofon aufgenommen (MediaRecorder, bis 4 Sekunden, mit Stopp-Knopf) und als WAV (16 kHz, mono) ins Resource Pack gelegt. Eine vorhandene Audiodatei kann weiterhin gewählt werden.
 - **Paket-Auswahl:** Anfangs ist nichts markiert. Markiert wird direkt auf jeder Kachel (Häkchen oben rechts), ein ganzer Bereich oder ein ganzer Tab mit „Alle markieren“. Beim Export wählt man „Nur markierte“ (was in den Tabs markiert ist) oder „Alle Elemente“ (alles aus allen Tabs; bei Blöcken alle veränderten Texturen).
+- **Infoblock im Editor:** Beim Öffnen eines HUD-Elements, Items, Mobs, Deko-Blocks oder Blocks steht oben kurz, was es im Spiel tut, mit Besonderheiten (Taming, Reiten, Spawn-Biome, Loot, Crafting-Rezept, Haltbarkeit) und ob es nur im Komplettpaket (Behavior Pack) oder auch in „Nur Aussehen“ (Resource Pack) enthalten ist. Die Tabs zeigen nur einen kurzen allgemeinen Text.
 
 Als Ergebnis entsteht eine `.mcaddon`-Datei (Resource Pack plus Behavior Pack) oder eine `.mcpack`-Datei (nur Resource Pack, „Nur Aussehen“).
 

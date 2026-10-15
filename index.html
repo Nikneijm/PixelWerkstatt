@@ -103,6 +103,10 @@ input[type=color]{width:44px;height:44px;border:2px solid var(--line);border-rad
 ol.steps{margin:0;padding-left:22px;display:grid;gap:8px;max-width:66ch}
 ol.steps b{font-weight:700}
 .note{border-left:4px solid var(--gold);background:var(--surface);padding:10px 14px;border-radius:0 6px 6px 0;max-width:70ch;font-size:14px}
+/* Infoblock oben im Editor-Blatt */
+.note.info{max-width:none;display:grid;gap:6px}
+.note.info h3,.note.info p{margin:0}
+.note.info ul{margin:0;padding-left:20px;display:grid;gap:4px}
 .hotbar-prev{display:block;width:100%;max-width:560px;image-rendering:pixelated;margin:0 auto}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:6px;z-index:50;max-width:calc(100% - 32px);font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--surface-2);padding:10px;border-radius:6px}
@@ -904,7 +908,7 @@ function render(){const M=$('#main');
   if(tab==='essen'||tab==='waffen')renderItemTab(M,tab);
   if(tab==='deko')renderDeko(M);
   if(tab==='tiere'){
-    M.innerHTML=`<section class="panel"><div class="group"><h2>Tiere</h2><p class="lead">Die Tiere tauchen in passenden Gegenden von selbst auf und es gibt sie als Spawn-Ei. Alle sind friedlich. Den Elefanten zähmst du mit Weizen, Äpfeln oder Bananen, den Drachen mit Fleisch oder Fisch. Danach kann man sie reiten. Den Drachen gibt es nur als Spawn-Ei, und auf ihm fliegst du: Wohin du schaust, dorthin fliegt er, Springen lässt ihn steigen.</p>
+    M.innerHTML=`<section class="panel"><div class="group"><h2>Tiere</h2><p class="lead">Alle Tiere sind friedlich, einige kann man zähmen und reiten. Tippe ein Tier an: Dort steht, was es kann, und du kannst es umfärben.</p>
       <div class="grid">${BUILTIN_MOBS.filter(k=>!MOBS[k].roll).map(mobTile).join('')}</div></div>
       <div class="group"><h2>Eigene Tiere</h2><p class="lead">Erfinde ein eigenes Tier: Wähle eine Bauform wie Fisch, Qualle, Vogel oder Reittier, gib ihm einen Namen und bemale es.</p>
       <div class="grid">${Object.keys(state.mobs).filter(k=>state.mobs[k].custom&&MOBS[k]).map(mobTile).join('')}${newTile('new-mob','Neues Tier')}</div></div></section>`;}
@@ -932,7 +936,7 @@ function renderItemTab(M,cat){const E=cat==='essen';
 function dekoTile(k){return tile('deko-'+k,thumbCache['d:'+k]||(thumbCache['d:'+k]=mobThumb(k)||spriteURL(new Array(256).fill(Object.values(state.deko[k].colors)[0]),16)),dekoName(k),state.deko[k].on);}
 function renderDeko(M){const own=Object.keys(state.deko).filter(k=>state.deko[k].custom&&DEKO[k]);
   const hold=Object.keys(state.items).filter(k=>state.items[k].custom&&ITEMS[k]&&itemCat(k)==='deko');
-  M.innerHTML=`<section class="panel"><div class="group"><h2>Deko</h2><p class="lead">Dinge zum Hinstellen. Sie drehen sich beim Hinstellen zu dir. Computer und Laptop leuchten ein bisschen. Den Laptop kannst du zum Beispiel auf den Tisch stellen. Den Rollkoffer gibt es als Spawn-Ei: Schieb ihn an, nimm ihn an die Leine oder tippe ihn an und pack Sachen hinein.</p>
+  M.innerHTML=`<section class="panel"><div class="group"><h2>Deko</h2><p class="lead">Dinge zum Hinstellen und ein Koffer, der rollen kann. Tippe ein Teil an: Dort steht, was es kann.</p>
       <div class="grid">${BUILTIN_DEKO.map(dekoTile).join('')}${BUILTIN_MOBS.filter(k=>MOBS[k].roll).map(mobTile).join('')}</div></div>
     <div class="group"><h2>Eigene Deko</h2><p class="lead">Erfinde ein eigenes Deko-Teil: Grundform wählen, Namen geben und bemalen.</p>
       <div class="grid">${own.map(dekoTile).join('')}${newTile('new-deko','Neues Deko-Teil')}</div></div>
@@ -979,6 +983,60 @@ function renderPaket(M){const sm=selection('markiert'),sa=selection('alle');
   $('#pk-reset-btn').onclick=()=>{$('#pk-reset').innerHTML='<div class="confirm"><span>Wirklich alles löschen, auch eigene Items, Tiere, Blöcke und Geräusche?</span><button class="btn danger" id="rs-yes">Ja, löschen</button><button class="btn" id="rs-no">Abbrechen</button></div>';
     $('#rs-yes').onclick=()=>{state=defaultState();syncCustoms();for(const k in thumbCache)delete thumbCache[k];save();render();toast('Alles ist wieder wie am Anfang.');};$('#rs-no').onclick=()=>render();};}
 
+/* ---------------- Infoblock im Editor-Blatt ----------------
+   Beim Öffnen steht oben ein kurzer Kasten: was das Ding im Spiel macht und was besonders ist.
+   Die Tabs selbst zeigen nur einen kurzen allgemeinen Text. */
+const MOB_WAS={vogel:'Ein kleiner Vogel, der durch die Luft fliegt.',schmetterling:'Ein Schmetterling, der über Wiesen und durch Wälder flattert.',
+  elefant:'Ein großer, gemütlicher Elefant.',schneeeule:'Eine Eule, die durch verschneite Gegenden fliegt.',affe:'Ein Affe, der auf zwei Beinen läuft.',
+  hase:'Ein Häschen, das herumhoppelt.',pfau:'Ein Pfau, der ein buntes Rad schlägt.',drache:'Ein Drache, auf dem du fliegen kannst.',maus:'Eine kleine, flinke Maus.',
+  rollkoffer:'Ein Koffer auf Rollen für deine Sachen.'};
+const DEKO_WAS={computer:'Ein Computer zum Hinstellen.',laptop:'Ein Laptop zum Hinstellen.',koffer:'Ein Koffer zum Hinstellen. Er bleibt stehen, wo du ihn hinstellst.',
+  palme:'Eine Palme, fast zwei Blöcke hoch.',tisch:'Ein Tisch. Darauf kannst du Dinge stellen, zum Beispiel den Laptop.'};
+const NAHRUNG_DE={'minecraft:wheat':'Weizen','minecraft:apple':'Äpfeln','wb:banane':'Bananen'};
+const LOOT_DE={'minecraft:feather':'eine Feder','wb:banane':'eine Banane'};
+const VOLL='Kommt nur mit dem Komplettpaket ins Spiel.',OPTIK='Kommt auch mit „Nur Aussehen“ ins Spiel.',SUCHE='Im Spiel findest du es im Kreativ-Inventar über die Suche.';
+function infoFor(kind,key){
+  if(kind==='hud'){const h={
+    heart:['Das sind deine Lebens-Herzen unten im Bild.',['Halbe Herzen und der dunkle Hintergrund entstehen von selbst.','Zu sehen im Überlebens- und Abenteuermodus, nicht im Kreativmodus.']],
+    hunger:['Die Hungerleiste neben den Herzen. Sie wird leerer, wenn du rennst, springst und kämpfst.',['Halbe Symbole und der Hintergrund entstehen von selbst.','Zu sehen im Überlebens- und Abenteuermodus.']],
+    armor:['Die Rüstungs-Anzeige über den Herzen.',['Sie erscheint erst, wenn du Rüstung trägst.']],
+    xp:['Der Balken über der Hotbar. Er füllt sich, wenn du Erfahrung sammelst.',['Die Zahl darüber ist dein Level.','Zu sehen im Überlebens- und Abenteuermodus.']],
+    hotbar:['Die Leiste ganz unten mit deinen neun Fächern.',['Der Auswahlrahmen zeigt, was du gerade in der Hand hast.','Auch im Kreativmodus zu sehen.']]}[key];return h?[h[0],h[1].concat(OPTIK)]:null;}
+  if(kind==='item'){const d=ITEMS[key],it=state.items[key],own=!!it.custom,ex=[];let was='';
+    if(d.kind==='food'){was='Zum Essen. Es füllt die Hungerleiste. Wie viel, stellst du unten bei „Sättigung“ ein.';ex.push('Essen geht nur im Überlebensmodus und nur, wenn du Hunger hast.');}
+    if(d.kind==='drink'){was='Zum Trinken. Es füllt die Hungerleiste. Wie viel, stellst du unten bei „Sättigung“ ein.';ex.push('Du kannst es immer trinken, auch ohne Hunger.','Das Glas bleibt danach voll, du kannst es immer wieder trinken.');}
+    if(d.kind==='weapon'){was='Zum Kämpfen. Wie stark sie trifft, stellst du unten bei „Schaden“ ein.';ex.push('Hält 800 Treffer, dann geht sie kaputt.');if(key==='waffe')ex.push('Herstellen an der Werkbank: 2 Diamanten und 1 Stock, schräg gelegt.');}
+    if(d.kind==='gun'){was='Schießt Schrot. Halte sie gedrückt und lass dann los.';ex.push('Sie braucht Patronen. Die kommen automatisch mit ins Paket.','Hält 400 Schüsse.','Herstellen an der Werkbank: 3 Eisenbarren, Schwarzpulver und 2 Stöcke.');}
+    if(d.kind==='ammo'){was='Munition für die Schrotflinte.';ex.push('Herstellen an der Werkbank: Schwarzpulver und ein Eisennugget ergeben 8 Patronen.');}
+    if(d.kind==='tool'){const t=TOOLS[(it.custom&&it.custom.tool)||'pickaxe']||TOOLS.pickaxe;was=`Ein Werkzeug zum Abbauen, es arbeitet wie eine ${t.label}.`;ex.push('Wie schnell es abbaut, stellst du unten ein.','Hält 600 Einsätze.');}
+    if(d.kind==='throw'){was='Zum Werfen: Tippe mit dem Ding in der Hand auf den Bildschirm, dann fliegt es wie ein Schneeball.';ex.push('Es macht keinen Schaden.');}
+    if(d.kind==='fly'){was='Zum Fliegen: Halte es in der Hand, dann fällst du ganz langsam.';ex.push('Tippe auf den Bildschirm, dann zieht dich ein Windstoß nach oben. So oft du willst.');}
+    if(d.kind==='misc'){was='Ein Gegenstand zum Sammeln, Herumtragen und Verschenken.';ex.push('Man hält ihn in der Hand, aufstellen kann man ihn nicht.');}
+    if(own)was='Dein eigenes Teil. '+was;
+    return[was,ex.concat(SUCHE,VOLL)];}
+  if(kind==='ov'){const o=OVERRIDES.find(x=>x.file===key);return[`Gibt dem Item „${o.label}“ ein neues Aussehen.`,['Es kann danach alles wie vorher, nur das Bild ist neu.',OPTIK]];}
+  if(kind==='mob'){const m=MOBS[key],s=state.mobs[key],ex=[];
+    if(m.roll)return[MOB_WAS[key],['Schieb ihn an, dann rollt er. Die Räder drehen sich dabei.','Mit einer Leine in der Hand antippen: Dann rollt er hinter dir her.','Mit leerer Hand antippen: Er geht auf wie eine Kiste und du kannst 27 Fächer füllen.','Geht er kaputt, fällt alles heraus, was drin war.','Es gibt ihn nur als Spawn-Ei im Kreativ-Inventar.',VOLL]];
+    let was=MOB_WAS[key]||'';if(s.custom){const f=FORMS[s.custom.form];was=`Dein eigenes Tier${f?`, Bauform „${f.label}“: ${f.info}`:''}.`;}
+    if(m.swim)ex.push('Lebt im Wasser.');
+    if(m.ride){const t=m.tame||['minecraft:wheat','minecraft:apple'];const fleisch=t.some(x=>/beef|porkchop|cod/.test(x));
+      ex.push(`Zähmen: mit ${fleisch?'Fleisch oder Fisch':t.map(x=>NAHRUNG_DE[x]||x).join(', ').replace(/, ([^,]*)$/,' oder $1')} füttern${m.tame?'':', Bananen gehen auch, wenn die Banane im Paket ist'}. Es kann ein paar Versuche dauern, bis Herzen erscheinen.`);
+      ex.push(m.fly?'Danach kannst du aufsteigen und fliegen: Wohin du schaust, dorthin fliegt er. Springen lässt ihn steigen.':'Danach kannst du aufsteigen und reiten.');}
+    const orte=Object.values(BIOMES).filter(b=>b.tags.length&&b.tags.some(t=>m.biomes.includes(t))).map(b=>b.label);
+    ex.push(orte.length?`Taucht von selbst auf in: ${orte.join(', ')}. Außerdem gibt es ein Spawn-Ei.`:'Taucht nicht von selbst auf, es gibt ihn nur als Spawn-Ei.');
+    if(m.loot&&LOOT_DE[m.loot])ex.push(`Lässt beim Besiegen ${LOOT_DE[m.loot]} fallen${m.loot.startsWith('wb:')?', wenn sie im Paket ist':''}.`);
+    ex.push('Friedlich: greift niemanden an.',VOLL);return[was,ex];}
+  if(kind==='deko'){const m=DEKO[key],s=state.deko[key],ex=[];let was=DEKO_WAS[key]||'';
+    if(s.custom){const f=DEKO_FORMS[s.custom.form];was=`Dein eigenes Deko-Teil${f?` in der Form „${f.label}“`:''}.`;}
+    if(m.light)ex.push('Leuchtet ein bisschen.');if(key==='koffer')ex.push('Einen Koffer, der rollen kann, gibt es als Rollkoffer.');
+    ex.push('Dreht sich beim Hinstellen zu dir.','Ist ein Block: hinstellen, abbauen und wieder hinstellen.',SUCHE,VOLL);return[was,ex];}
+  if(kind==='blk')return['Gibt allen Blöcken dieser Sorte im Spiel ein neues Aussehen.',['Auch Blöcke, die schon in deiner Welt stehen, sehen dann so aus.','Nur das Aussehen ändert sich, der Block funktioniert wie vorher.',OPTIK]];
+  return null;}
+function addInfo(B,kind,key){let r=null;try{r=infoFor(kind,key);}catch(e){r=null;}if(!r||!r[0])return;
+  const box=document.createElement('div');box.className='note info';
+  box.innerHTML=`<h3>Was es kann</h3><p>${esc(r[0])}</p>${r[1].length?`<ul>${r[1].map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`;
+  const col=B.querySelector('.col');(col||B).prepend(box);}
+
 /* ---------------- Editor-Blatt ---------------- */
 let sheetEl=null;
 function closeSheet(){if(!sheetEl)return;recStop(true);p3Unmount();sheetEl.remove();sheetEl=null;document.body.style.overflow='';render();}
@@ -989,6 +1047,8 @@ function openSheet(id){closeSheet();document.body.style.overflow='hidden';sheetE
   if(kind==='new')title={essen:'Neues Essen',waffen:'Neues Teil',deko:'Neues Deko-Teil',mob:'Neues Tier'}[key]||'Neu';if(kind==='blk')title=BLK_BY_ID[key][1];if(kind==='deko')title=dekoName(key);
   sheetEl.innerHTML=`<div class="sheet-bar"><div class="inner"><h2>${esc(title)}</h2><button class="btn primary" id="sh-done">Fertig</button></div></div><div class="sheet-body" id="sh-body"></div>`;
   $('#sh-done',sheetEl).onclick=closeSheet;const B=$('#sh-body',sheetEl);
+  fillSheet(B,kind,key);addInfo(B,kind,key);}
+function fillSheet(B,kind,key){
   if(kind==='hud'&&key==='hotbar')return editHotbar(B);
   if(kind==='hud'&&key==='xp')return editXp(B);
   if(kind==='hud')return editHud(B,key);
@@ -1007,16 +1067,13 @@ function previewBlock(extra=''){return`<div class="preview" id="pv"><div class="
 function tplOptions(list,cur){return list.map(k=>`<option value="${k}" ${k===cur?'selected':''}>${esc(T[k].label)}</option>`).join('');}
 
 const HUD_TPL={heart:['herz9','stern9','banane9','kirsche9','pizza9'],hunger:['karotte9','keule9','banane9','currywurst9','pizza9','kirsche9'],armor:['ruestung9','schild9','stern9']};
-const HUD_INFO={heart:'Ersetzt die Lebens-Herzen. Halbe Herzen und der dunkle Hintergrund werden automatisch erzeugt.',
-  hunger:'Ersetzt die Hunger-Anzeige. Halbe Symbole und der Hintergrund werden automatisch erzeugt.',
-  armor:'Ersetzt die Rüstungs-Anzeige über den Herzen. Sie erscheint, sobald du Rüstung trägst.'};
 function colorRow(id,cur){return`<div class="row" id="${id}">${Object.entries(ICON_COLORS).map(([n,c])=>`<button class="btn small" data-c="${c}" aria-pressed="${cur===c}"><span style="display:inline-block;width:14px;height:14px;background:${c};border:2px solid ${shade(c,-.5)};vertical-align:-2px;margin-right:6px"></span>${n}</button>`).join('')}</div>`;}
 function editHud(B,key){const h=state.hud[key];const list=[...new Set([...(HUD_TPL[key]||[]),...TPL9])];
   B.innerHTML=`<div class="col">${previewBlock()}<div class="card"><div id="hudp"></div></div>
     <div class="card" style="display:grid;gap:12px">${markSwitch(h.on)}
       <label class="field">Form<select id="tp">${list.map(k=>`<option value="${k}" ${k===h.tpl?'selected':''}>${esc(T[k].label)}</option>`).join('')}</select></label>
       <div><h3>Farbe</h3>${colorRow('cols',h.color)}<div class="row" style="margin-top:8px"><label class="part"><input type="color" id="own" value="${h.color||avgHex(h.px)}">Eigene Farbe</label></div></div>
-      <p class="status" style="margin:0">${HUD_INFO[key]} Die dunkle Umrandung bleibt beim Umfärben erhalten.</p></div></div>
+      <p class="status" style="margin:0">Die dunkle Umrandung bleibt beim Umfärben erhalten.</p></div></div>
     <div class="col card" id="pe"></div>`;
   const hv=document.createElement('canvas');hv.className='hotbar-prev';$('#hudp',B).append(hv);
   const show=()=>{p3ShowSprite(h.px,9);drawHudPreview(hv);};
@@ -1032,7 +1089,7 @@ function editHud(B,key){const h=state.hud[key];const list=[...new Set([...(HUD_T
 /* XP-Leiste: Balken, leerer Teil und Levelzahl */
 function editXp(B){const c=state.hud.xp;
   B.innerHTML=`<div class="col"><div class="card" style="display:grid;gap:10px"><h3>Vorschau</h3><div id="hudp"></div>
-      <p class="status" style="margin:0">Der Balken füllt sich im Spiel, wenn du Erfahrung sammelst. Die Zahl darüber ist dein Level.</p></div></div>
+</div></div>
     <div class="col card" style="display:grid;gap:14px">${markSwitch(c.on)}
       <div><h3>Fertige Farben</h3><div class="row" id="xp-pre">${Object.entries(XP_PRESETS).map(([n,v])=>`<button class="btn small" data-p="${n}" aria-pressed="${c.preset===n}"><span style="display:inline-block;width:14px;height:14px;background:${v[0]};border:2px solid ${v[1]};vertical-align:-2px;margin-right:6px"></span>${n}</button>`).join('')}</div></div>
       <div><h3>Eigene Farben</h3><div class="parts">
@@ -1058,17 +1115,13 @@ function editHotbar(B){const c=state.hud.hotbar;
   $('#hb-pre',B).onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;const v=HOTBAR_PRESETS[b.dataset.p];[c.rahmen,c.feld,c.auswahl]=v;c.preset=b.dataset.p;$('#hb-r',B).value=v[0];$('#hb-f',B).value=v[1];$('#hb-a',B).value=v[2];B.querySelectorAll('[data-p]').forEach(x=>x.setAttribute('aria-pressed',x===b));upd();};}
 
 function editItem(B,key){const it=state.items[key],d=ITEMS[key],own=!!it.custom;
-  const valueField=d.kind==='ammo'?'<p class="status" style="margin:0">Patronen braucht die Schrotflinte zum Schießen. Herstellung: Schwarzpulver + Eisennugget ergibt 8 Patronen.</p>':
-    d.kind==='misc'?'<p class="status" style="margin:0">Ein Gegenstand zum Sammeln, Herumtragen und Verschenken. Man hält ihn in der Hand, aufstellen kann man ihn nicht.</p>':
-    d.kind==='throw'?'<p class="status" style="margin:0">Zum Werfen: Tippe mit dem Ding in der Hand auf den Bildschirm, dann fliegt es wie ein Schneeball. Es macht keinen Schaden.</p>':
-    d.kind==='fly'?'<p class="status" style="margin:0">Zum Fliegen: Halte es in der Hand, dann fällst du ganz langsam. Tippe auf den Bildschirm, dann zieht dich ein Windstoß nach oben. So oft du willst.</p>':
+  const valueField=['ammo','misc','throw','fly'].includes(d.kind)?'':
     `<label class="field">${d.label}: <b id="vv">${it.value}</b><input type="range" id="val" min="1" max="${d.kind==='food'||d.kind==='drink'?10:20}" value="${it.value}"></label>`;
   B.innerHTML=`<div class="col">${previewBlock()}<div class="card" style="display:grid;gap:12px">${markSwitch(it.on)}
       <label class="field">Name im Spiel<input type="text" id="nm" maxlength="24" value="${esc(it.name)}"></label>${valueField}
       ${own&&d.kind==='tool'?`<label class="field">Werkzeug<select id="tool">${Object.entries(TOOLS).map(([k,v])=>`<option value="${k}" ${k===it.custom.tool?'selected':''}>${v.label}</option>`).join('')}</select></label>`:''}
       <label class="field">Aussehen neu laden<select id="tp"><option value="">Vorlage wählen …</option>${tplOptions(TPL16,'')}</select></label>
-      ${key==='flinte'?'<p class="status" style="margin:0">Die Schrotflinte braucht Patronen. Sie kommen automatisch mit ins Paket.</p>':''}
-      ${own?`<p class="status" style="margin:0">${esc(ITEM_KINDS[d.kind].label)} · im Spiel im Kreativ-Inventar über die Suche zu finden.</p><div id="del"></div>`:''}</div></div>
+      ${own?`<p class="status" style="margin:0">Art: ${esc(ITEM_KINDS[d.kind].label)}</p><div id="del"></div>`:''}</div></div>
     <div class="col card" id="pe"></div>`;
   p3Mount($('#pv',B));p3ShowSprite(it.px,16);
   const pe=PixelEditor($('#pe',B),{w:16,h:16,px:it.px,onChange:(px,f)=>{it.px=px;p3ShowSprite(px,16);if(f)save();}});
@@ -1154,7 +1207,7 @@ function editOverride(B,file){const o=state.overrides[file];
   B.innerHTML=`<div class="col">${previewBlock()}<div class="card" style="display:grid;gap:12px">
       ${markSwitch(o.on)}
       <label class="field">Neues Aussehen<select id="tp">${tplOptions(TPL16,o.tpl)}</select></label>
-      <p class="status" style="margin:0">Nur das Bild ändert sich. Das Item kann danach alles wie vorher.</p></div></div>
+</div></div>
     <div class="col card" id="pe"></div>`;
   p3Mount($('#pv',B));p3ShowSprite(o.px,16);
   const pe=PixelEditor($('#pe',B),{w:16,h:16,px:o.px,onChange:(px,f)=>{o.px=px;p3ShowSprite(px,16);if(f)save();}});
