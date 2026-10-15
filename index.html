@@ -220,7 +220,13 @@ const T = {
   blaubeere:{size:16,label:'Blaubeere',pal:{B:'#3b4fb8',b:'#26357e',W:'#9fb0ff',o:'#141c45',G:'#5fb547',g:'#2f7a2a'},rows:['................','................','.........gG.....','.........Gg.....','........ooooo...','...ooo.oBBWBbo..','..oBBWooBBBBbo..','..oBBBBoBbBBbo..','..oBbBBoobbbo...','..oBBBoooooo....','...oooBBWBbo....','.....oBBBBbo....','.....oBbBBbo....','......obbbo.....','.......ooo......','................']},
   weintrauben:{size:16,label:'Weintrauben',pal:{P:'#7b3fa0',p:'#562a74',W:'#c79be0',o:'#2c1238',g:'#2f7a2a',G:'#5fb547',b:'#5b3a1e'},rows:['.......bG.......','.......bGGg.....','..ooooobogoooo..','.oWPPWPPWPPWPPo.','.oPPpPPpPPpPPpo.','.oPppPppPppPppo.','..oWPPWPPWPPoo..','..oPPpPPpPPpo...','..oPppPppPppo...','...ooWPPWPPo....','....oPPpPPpo....','....oPppPppo....','.....oWPPoo.....','.....oPPpo......','.....oPppo......','......ooo.......']},
   nuesse:{size:16,label:'Nüsse',pal:{o:'#2e1a0d',N:'#b07a3e',n:'#8a5a2b',C:'#d9b98a',W:'#e0b27a'},rows:['................','................','................','..oooo....oooo..','.oCCCCo..oCCCCo.','oCCCCCCooCCCCCCo','oNWNNNnooNWNNNno','oNWNNNnooNWNNNno','oNNNNNnooNNNNNno','oNNNNNnooNNNNNno','.oNNNno..oNNNno.','..oNno....oNno..','...oo......oo...','................','................','................']},
-  /* 9×9 Symbole für Herzen & Hunger */
+  /* 9×9 Symbole für Herzen, Hunger und Rüstung */
+  karotte9:{size:9,label:'Karotte',pal:{O:'#f08c2a',y:'#ffc06a',o:'#5a2a08',G:'#5fb547',g:'#2f7a2a'},rows:[
+    '......g.G','.....gGg.','....oOOo.','...oOyOo.','..oOyOo..','.oOOOo...','.oOOo....','oOo......','oo.......']},
+  ruestung9:{size:9,label:'Rüstung',pal:{M:'#c4c6d0',W:'#f2f3f8',D:'#80828c',o:'#1a1a1e'},rows:[
+    '.oo...oo.','oMMoooMMo','oWMMMMMMo','oMMMMMMMo','.oMMMMMo.','.oMMMMMo.','.oMMMMMo.','.oDDDDDo.','..ooooo..']},
+  schild9:{size:9,label:'Schild',pal:{M:'#c4c6d0',W:'#f2f3f8',D:'#80828c',o:'#1a1a1e'},rows:[
+    'ooooooooo','oWMMMMMMo','oWMMMMMDo','oMMMMMMDo','oMMMMMMDo','.oMMMMDo.','.oMMMMDo.','..oMMDo..','...ooo...']},
   herz9:{size:9,label:'Herz',pal:{R:'#e3242b',W:'#ffb3b3',o:'#3a0b0b'},rows:[
     '.oo...oo.','oRRo.oRRo','oRWRoRRRo','oRRRRRRRo','.oRRRRRo.','..oRRRo..','...oRo...','....o....','.........']},
   banane9:{size:9,label:'Banane',pal:{Y:'#f5d63d',y:'#d9a91e',o:'#6b4512',k:'#3f2c0c'},rows:[
@@ -518,7 +524,24 @@ function colorize(px,hex){const[th,ts,tl]=rgb2hsl(...hex2rgb(hex));const ls=px.f
 
 const FACE_DE={north:'vorne',south:'hinten',east:'Seite',west:'Seite',up:'oben',down:'unten'};
 const BONE_DE={body:'Körper',head:'Kopf',wing_l:'Flügel',wing_r:'Flügel',tail:'Schwanz',leg0:'Bein',leg1:'Bein',leg2:'Bein',leg3:'Bein',trunk:'Rüssel',ear_l:'Ohr',ear_r:'Ohr',arm_l:'Arm',arm_r:'Arm'};
-const HOTBAR_PRESETS={Smaragd:['#2f6b4f','#8fd1a9','#ffd84a'],Klassisch:['#555555','#8b8b8b','#ffffff'],Diamant:['#1f6f7a','#7fe0e6','#ffffff'],Lava:['#7a2a10','#f08a2a','#ffe14a'],Gold:['#8a6410','#f2cf55','#ffffff'],Lila:['#4b2a7a','#b48cf0','#ffd84a'],Nacht:['#141a2a','#3a4a6a','#7fd3ff']};
+/* Fertige Looks für die ganze Anzeige: Farben für Herzen, Rüstung, Hunger, XP-Leiste [Balken, leer, Zahl] und Hotbar-Vorlage */
+const LOOKS={
+  Diamant:{herz:'#35c9f0',ruestung:'#7fe0e6',hunger:'#f2b33a',xp:['#3fd0ff','#123844','#7fe8ff'],hotbar:'Diamant'},
+  Klassisch:{herz:'#e3242b',ruestung:'#c4c6d0',hunger:'#f08c2a',xp:['#7ec850','#22301f','#80ff20'],hotbar:'Klassisch'},
+  Gold:{herz:'#f5c21b',ruestung:'#f2cf55',hunger:'#f08c2a',xp:['#f2cf55','#3a2e10','#ffe14a'],hotbar:'Gold'},
+  Smaragd:{herz:'#2fd168',ruestung:'#8fd1a9',hunger:'#f08c2a',xp:['#2fd168','#163222','#8fffb0'],hotbar:'Smaragd'},
+  Lava:{herz:'#ff5a1f',ruestung:'#f08a2a',hunger:'#ffd84a',xp:['#ff7a1f','#3a1a0a','#ffe14a'],hotbar:'Lava'},
+  Amethyst:{herz:'#b06cf0',ruestung:'#b48cf0',hunger:'#f08c2a',xp:['#b06cf0','#2a1a3a','#e0b0ff'],hotbar:'Lila'},
+  Zuckerwatte:{herz:'#ff7fc8',ruestung:'#ffc0e0',hunger:'#ff9a3a',xp:['#ff7fc8','#3a1a2c','#ffd0ec'],hotbar:'Rosa'},
+  Nacht:{herz:'#4a6aff',ruestung:'#5a6a9a',hunger:'#7fd3ff',xp:['#3a7fff','#10182a','#7fd3ff'],hotbar:'Nacht'}};
+const ICON_COLORS={Rot:'#e3242b',Orange:'#f08c2a',Gold:'#f5c21b',Grün:'#2fd168',Diamant:'#35c9f0',Blau:'#3a6aff',Lila:'#b06cf0',Rosa:'#ff7fc8',Weiß:'#eef2f6',Grau:'#8b8f99',Schwarz:'#3a3a3a'};
+const XP_PRESETS=Object.fromEntries(Object.entries(LOOKS).map(([n,l])=>[n,l.xp]));
+const HUD_KEYS=['heart','armor','hunger','xp','hotbar'];
+const HUD_DE={heart:'Herzen',armor:'Rüstung',hunger:'Hunger',xp:'XP-Leiste',hotbar:'Hotbar'};
+/* Symbol umfärben: die dunkle Umrandung bleibt, alles andere bekommt die neue Farbe mit den alten Hell-Dunkel-Stufen */
+function recolorIcon(px,hex){const[th,ts,tl]=rgb2hsl(...hex2rgb(hex));const body=px.filter(v=>v&&rgb2hsl(...hex2rgb(v))[2]>=.16).map(v=>rgb2hsl(...hex2rgb(v))[2]);if(!body.length)return px.slice();
+  const avg=body.reduce((a,b)=>a+b,0)/body.length;return px.map(v=>{if(!v)return v;const l=rgb2hsl(...hex2rgb(v))[2];if(l<.16){const sat=rgb2hsl(...hex2rgb(v))[1];return sat<.15?v:hsl2hex(th,Math.min(ts,.6),l);}return hsl2hex(th,ts,Math.max(.18,Math.min(.97,tl+(l-avg))));});}
+const HOTBAR_PRESETS={Smaragd:['#2f6b4f','#8fd1a9','#ffd84a'],Klassisch:['#555555','#8b8b8b','#ffffff'],Diamant:['#1f6f7a','#7fe0e6','#ffffff'],Lava:['#7a2a10','#f08a2a','#ffe14a'],Gold:['#8a6410','#f2cf55','#ffffff'],Lila:['#4b2a7a','#b48cf0','#ffd84a'],Rosa:['#7a2a5a','#ff9ad0','#ffffff'],Nacht:['#141a2a','#3a4a6a','#7fd3ff']};
 
 /* ---------------- Hilfen ---------------- */
 const $=(s,r=document)=>r.querySelector(s);
@@ -540,7 +563,8 @@ const LS='weltbaukasten-v1';
 function defaultState(){
   /* Nichts ist vorab markiert (on:false). Beim Paketbau wählt man „Alle Elemente“ oder „Nur markierte“ (state.auswahl). */
   const st={name:'Meine Welt',version:0,ids:{rp:uuid(),rpm:uuid(),bp:uuid(),bpm:uuid(),bps:uuid()},auswahl:'markiert',marksV:1,
-    hud:{heart:{on:false,tpl:'banane9',px:tplPx('banane9')},hunger:{on:false,tpl:'currywurst9',px:tplPx('currywurst9')},hotbar:{on:false,preset:'Smaragd',rahmen:'#2f6b4f',feld:'#8fd1a9',auswahl:'#ffd84a'}},
+    hud:{heart:{on:false,tpl:'herz9',px:tplPx('herz9')},hunger:{on:false,tpl:'karotte9',px:tplPx('karotte9')},hotbar:{on:false,preset:'Smaragd',rahmen:'#2f6b4f',feld:'#8fd1a9',auswahl:'#ffd84a'},
+      armor:{on:false,tpl:'ruestung9',px:tplPx('ruestung9')},xp:{on:false,preset:'Klassisch',voll:'#7ec850',leer:'#22301f',zahl:'#80ff20'}},
     items:{},overrides:{},mobs:{},deko:{},blockTex:{},blocks:{}};
   for(const k of BUILTIN_ITEMS){const d=ITEMS[k];st.items[k]={on:false,name:d.name,tpl:d.tpl,px:tplPx(d.tpl),value:d.value};}
   for(const o of OVERRIDES)st.overrides[o.file]={on:false,tpl:o.def,px:tplPx(o.def)};
@@ -553,7 +577,7 @@ function normalize(s){s.blockTex=s.blockTex||{};s.blocks=s.blocks||{};if(s.ids&&
   /* Deko: Markierung von den früheren Hand-Gegenständen (Computer, Laptop, Koffer, Palme) übernehmen */
   if(!s.deko){s.deko={};for(const k of BUILTIN_DEKO)s.deko[k]={on:!!(s.items&&s.items[k]&&s.items[k].on),colors:mobColors(DEKO[k]),edits:{}};}
   for(const k of BUILTIN_DEKO)if(!s.deko[k])s.deko[k]={on:false,colors:mobColors(DEKO[k]),edits:{}};if(s.auswahl!=='alle')s.auswahl='markiert';
-  if(!s.hud)s.hud=defaultState().hud;for(const k of['heart','hunger','hotbar'])if(typeof s.hud[k].on!=='boolean')s.hud[k].on=false;
+  const dh=defaultState().hud;if(!s.hud)s.hud=dh;for(const k of HUD_KEYS){if(!s.hud[k])s.hud[k]=dh[k];if(typeof s.hud[k].on!=='boolean')s.hud[k].on=false;}
   if(!s.marksV){for(const o of[...Object.values(s.items),...Object.values(s.overrides),...Object.values(s.mobs)])o.on=false;s.marksV=1;}
   return s;}
 /* Eigene Items und Tiere aus dem Zustand in ITEMS/MOBS eintragen (bzw. gelöschte entfernen) */
@@ -620,6 +644,38 @@ function hotbarSlot(i,c){const W=20,H=22,px=new Array(W*H).fill('');const dark=s
     if(x>=2&&x<=17&&y>=3&&y<=18){v=c.feld;if(x===2||y===3)v=fd;else if(x===17||y===18)v=fl;}px[y*W+x]=v;}return px;}
 function capPx(c){return new Array(22).fill(0).map((_,y)=>y===0||y===21?shade(c.rahmen,-.55):shade(c.rahmen,-.55));}
 function selectedPx(c){const N=24,px=new Array(N*N).fill('');for(let y=0;y<N;y++)for(let x=0;x<N;x++){const d=Math.min(x,y,N-1-x,N-1-y);if(d===0)px[y*N+x]='#111111';else if(d<=2)px[y*N+x]=d===1?c.auswahl:shade(c.auswahl,-.2);else if(d===3)px[y*N+x]='#111111';}return px;}
+/* XP-Leiste: gleiche Größe wie in Vanilla (13×5, Neun-Teilung aus der Vanilla-.json), eigene Farben */
+function xpFull(c){const W=13,H=5,px=new Array(W*H).fill('');const d=shade(c.voll,-.85);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const edge=y===0||y===H-1||x===0||x===W-1;if(edge){if((y===0||y===H-1)&&(x===0||x===W-1))continue;px[y*W+x]=d;continue;}
+    px[y*W+x]=y===1?c.voll:y===2?shade(c.voll,.35):shade(c.voll,-.12);}return px;}
+function xpEmpty(c){const W=13,H=5,px=new Array(W*H).fill('');const d=shade(c.leer,-.7);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const edge=y===0||y===H-1||x===0||x===W-1;if(edge){if((y===0||y===H-1)&&(x===0||x===W-1))continue;px[y*W+x]=d;continue;}
+    px[y*W+x]=shade(c.leer,(hashRand(y*W+x,7)-.5)*.25+(y===2?-.08:0));}return px;}
+function xpNub(c){const W=11,H=5,px=new Array(W*H).fill('');const d=shade(c.voll,-.85),sep=shade(c.leer,-.3);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){if(y===0||y===H-1){px[y*W+x]=d;continue;}if(x===5){px[y*W+x]=sep;continue;}
+    const edge=x===0||x===W-1||x===4||x===6;px[y*W+x]=edge?shade(c.voll,-.45):y===2?shade(c.voll,.25):shade(c.voll,-.15);}return px;}
+/* Kleine Pixelziffer „6“ (5×7) für die Levelzahl in den Vorschauen */
+const DIGIT6=[' ### ','#    ','#    ','#### ','#   #','#   #',' ### '];
+function drawDigit(g,x,y,S,col){for(const[dx,c]of[[1,shade(col,-.75)],[0,col]])DIGIT6.forEach((r,yy)=>[...r].forEach((ch,xx)=>{if(ch==='#'){g.fillStyle=c;g.fillRect((x+xx+dx)*S,(y+yy+dx)*S,S,S);}}));}
+/* Kachelbild der XP-Leiste: Balken mit Füllstand und Levelzahl */
+function xpIcon(c){const n=16,px=new Array(n*n).fill('');const f=xpFull(c),e=xpEmpty(c);
+  for(let x=0;x<n;x++){const cx=x<6?x:x>=n-6?13-(n-x):6,src=x<10?f:e,cf=x<10?(x===0?0:x===9?12:6):cx;for(let r=0;r<5;r++){const v=src[r*13+(x<10?cf:cx)];if(v)px[(9+r)*n+x]=v;}}
+  const d=['###','#  ','###','# #','###'];d.forEach((r,yy)=>[...r].forEach((ch,xx)=>{if(ch==='#')px[(2+yy)*n+6+xx]=c.zahl;}));return px;}
+const hex01=h=>hex2rgb(h).map(v=>Math.round(v/255*1000)/1000);
+/* Gesamtvorschau der Anzeige wie im Spiel: Rüstung, Herzen, Hunger, XP-Leiste mit Levelzahl, Hotbar */
+function drawHudPreview(cv,opt={}){const S=opt.S||3,W=182,H=58;cv.width=(W+2)*S;cv.height=H*S;const g=cv.getContext('2d');g.imageSmoothingEnabled=false;g.clearRect(0,0,cv.width,cv.height);
+  const h=state.hud,ic=(px,x,y)=>g.drawImage(pxCanvas(px,9,9),(1+x)*S,y*S,9*S,9*S);
+  for(let i=0;i<10;i++)ic(i<7?h.armor.px:i===7?halfOf(h.armor.px):bgOf(h.armor.px),i*8,0);
+  for(let i=0;i<10;i++)ic(i<9?h.heart.px:halfOf(h.heart.px),i*8,10);
+  for(let i=0;i<10;i++)ic(i<8?h.hunger.px:bgOf(h.hunger.px),W-9-i*8,10);
+  const yb=28,full=xpFull(h.xp),empty=xpEmpty(h.xp);
+  const col=(px,w,cx,x,y)=>{for(let r=0;r<5;r++){const v=px[r*w+cx];if(v){g.fillStyle=v;g.fillRect((1+x)*S,(y+r)*S,S,S);}}};
+  for(let x=0;x<W;x++){const cx=x<6?x:x>=W-6?13-(W-x):6;col(empty,13,cx,x,yb);}
+  const fill=Math.round(W*.62);for(let x=0;x<fill;x++){const cx=x===0?0:x===fill-1?12:6;col(full,13,cx,x,yb);}
+  drawDigit(g,1+Math.floor(W/2)-2,yb-8,S,h.xp.zahl);
+  const yh=35;for(let i=0;i<9;i++)g.drawImage(pxCanvas(hotbarSlot(i,h.hotbar),20,22),(1+i*20)*S,(yh+1)*S,20*S,22*S);
+  g.drawImage(pxCanvas(selectedPx(h.hotbar),24,24),(1+20-2)*S,yh*S,24*S,24*S);
+  const icons=[state.items.waffe.px,state.items.banane.px,state.items.flinte.px,state.items.kirschen.px];icons.forEach((p,k)=>g.drawImage(pxCanvas(p,16,16),(1+k*20+2)*S,(yh+4)*S,16*S,16*S));}
 function drawHotbarPreview(cv,c){const S=3;const g=cv.getContext('2d');cv.width=(20*9+2)*S;cv.height=24*S;g.imageSmoothingEnabled=false;g.clearRect(0,0,cv.width,cv.height);
   for(let i=0;i<9;i++)g.drawImage(pxCanvas(hotbarSlot(i,c),20,22),(1+i*20)*S,1*S,20*S,22*S);
   const sel=pxCanvas(selectedPx(c),24,24);g.drawImage(sel,(1+2*20-2)*S,0,24*S,24*S);
@@ -799,11 +855,17 @@ function renderBloecke(M){
   draw();$('#bq').oninput=e=>{blkQuery=e.target.value;draw();};}
 const thumbCache={};
 function render(){const M=$('#main');
-  if(tab==='anzeige'){const hb=document.createElement('canvas');
-    M.innerHTML=`<section class="panel"><div class="group"><h2>Anzeige im Spiel</h2><p class="lead">Herzen, Hunger und die Hotbar unten im Bild. Tippe auf ein Feld, um es zu ändern.</p>
-      <div class="grid">${tile('hud-heart',spriteURL(state.hud.heart.px,9),'Herzen',state.hud.heart.on)}${tile('hud-hunger',spriteURL(state.hud.hunger.px,9),'Hunger',state.hud.hunger.on)}${tile('hud-hotbar',pxCanvas(hotbarSlot(1,state.hud.hotbar),20,22).toDataURL(),'Hotbar',state.hud.hotbar.on)}</div></div>
-      <div class="card"><h3>So sieht deine Hotbar aus</h3><div id="hbp"></div></div></section>`;
-    drawHotbarPreview(hb,state.hud.hotbar);hb.className='hotbar-prev';$('#hbp').append(hb);}
+  if(tab==='anzeige'){const hv=document.createElement('canvas');const H=state.hud;
+    M.innerHTML=`<section class="panel"><div class="card" style="display:grid;gap:10px"><h3>So sieht deine Anzeige aus</h3><div id="hudp"></div>
+        <p class="status" style="margin:0">Herzen, Rüstung, Hunger und XP-Leiste zeigt Minecraft nur im Überlebens- und Abenteuermodus, im Kreativmodus nur die Hotbar.</p></div>
+      <div class="group" data-noall><h2>Fertige Looks</h2><p class="lead">Ein Tipp färbt Herzen, Rüstung, Hunger, XP-Leiste und Hotbar passend zusammen. Danach kannst du alles einzeln weiter ändern.</p>
+        <div class="row" id="looks">${Object.entries(LOOKS).map(([n,l])=>`<button class="btn small" data-look="${n}"><span style="display:inline-block;width:14px;height:14px;background:${l.herz};border:2px solid ${l.xp[1]};vertical-align:-2px;margin-right:6px"></span>${n}</button>`).join('')}</div><div id="look-undo"></div></div>
+      <div class="group"><h2>Anzeige im Spiel</h2><p class="lead">Tippe auf ein Feld, um Form und Farbe zu ändern.</p>
+      <div class="grid">${tile('hud-heart',spriteURL(H.heart.px,9),'Herzen',H.heart.on)}${tile('hud-armor',spriteURL(H.armor.px,9),'Rüstung',H.armor.on)}${tile('hud-hunger',spriteURL(H.hunger.px,9),'Hunger',H.hunger.on)}${tile('hud-xp',spriteURL(xpIcon(H.xp),16),'XP-Leiste',H.xp.on)}${tile('hud-hotbar',pxCanvas(hotbarSlot(1,H.hotbar),20,22).toDataURL(),'Hotbar',H.hotbar.on)}</div></div></section>`;
+    drawHudPreview(hv);hv.className='hotbar-prev';$('#hudp').append(hv);
+    $('#looks').onclick=e=>{const b=e.target.closest('[data-look]');if(!b)return;const before=JSON.parse(JSON.stringify(state.hud));applyLook(b.dataset.look);save();render();
+      const u=$('#look-undo');u.innerHTML=`<div class="confirm"><span>Look „${esc(b.dataset.look)}“ ist drin. Deine Formen sind geblieben, nur die Farben sind neu.</span><button class="btn small" id="lk-undo">Rückgängig</button></div>`;
+      $('#lk-undo').onclick=()=>{state.hud=before;save();render();toast('Die vorherige Anzeige ist wieder da.');};};}
   if(tab==='essen'||tab==='waffen')renderItemTab(M,tab);
   if(tab==='deko')renderDeko(M);
   if(tab==='tiere'){
@@ -841,7 +903,10 @@ function renderDeko(M){const own=Object.keys(state.deko).filter(k=>state.deko[k]
       <div class="grid">${own.map(dekoTile).join('')}${newTile('new-deko','Neues Deko-Teil')}</div></div>
     ${hold.length?`<div class="group"><h2>Gegenstände zum Halten</h2><p class="lead">Deine früheren Gegenstände. Man hält sie in der Hand, hinstellen geht nicht.</p><div class="grid">${hold.map(itemTile).join('')}</div></div>`:''}</section>`;}
 
-function selSummary(x){const p=[];const h=['heart','hunger','hotbar'].filter(k=>x.hud[k]).length;
+/* Look anwenden: Formen bleiben, Farben werden ersetzt (Markierungen bleiben unverändert) */
+function applyLook(n){const l=LOOKS[n],h=state.hud;h.heart.px=recolorIcon(h.heart.px,l.herz);h.armor.px=recolorIcon(h.armor.px,l.ruestung);h.hunger.px=recolorIcon(h.hunger.px,l.hunger);
+  [h.xp.voll,h.xp.leer,h.xp.zahl]=l.xp;h.xp.preset=n;const hb=HOTBAR_PRESETS[l.hotbar];if(hb){[h.hotbar.rahmen,h.hotbar.feld,h.hotbar.auswahl]=hb;h.hotbar.preset=l.hotbar;}}
+function selSummary(x){const p=[];const h=HUD_KEYS.filter(k=>x.hud[k]).length;
   const n=(z,a,b)=>z+' '+(z===1?a:b);
   if(h)p.push(n(h,'Anzeige','Anzeigen'));if(x.items.length)p.push(n(x.items.length,'Item','Items'));if(x.overrides.length)p.push(n(x.overrides.length,'umgestaltetes Item','umgestaltete Items'));if(x.mobs.length)p.push(n(x.mobs.length,'Tier','Tiere'));if(x.deko.length)p.push(n(x.deko.length,'Deko-Teil','Deko-Teile'));if(x.blocks)p.push(n(x.blocks,'Block','Blöcke'));
   return p.join(' · ')||'noch nichts';}
@@ -856,7 +921,7 @@ function renderPaket(M){const sm=selection('markiert'),sa=selection('alle');
         <p class="status" style="margin:6px 0 0">Markieren kannst du alles direkt auf der Kachel mit dem Häkchen oben rechts, ganze Bereiche mit „Alle markieren“. Von Blöcken kommen nur Seiten mit, die du verändert hast.</p></div>
       <div class="row"><span class="chip">Version ${state.version}</span></div>
       <div class="row"><button class="btn primary" id="pk-full">Komplettpaket erstellen</button><button class="btn" id="pk-rp">Nur Aussehen erstellen</button></div>
-      <p class="status" style="margin:0">Komplettpaket: alles inklusive neuer Items, Tiere und Deko. In dieser Welt gibt es dann keine Erfolge.<br>Nur Aussehen: Herzen, Hunger, Hotbar, umgestaltete Items und Blöcke (ohne neue Items, Tiere und Deko). Erfolge bleiben an.</p>
+      <p class="status" style="margin:0">Komplettpaket: alles inklusive neuer Items, Tiere und Deko. In dieser Welt gibt es dann keine Erfolge.<br>Nur Aussehen: Herzen, Rüstung, Hunger, XP-Leiste, Hotbar, umgestaltete Items und Blöcke (ohne neue Items, Tiere und Deko). Erfolge bleiben an.</p>
       <div id="pk-msg"></div>
     </div>
     <div class="group"><h2>So kommt das Paket ins Spiel</h2>
@@ -875,7 +940,7 @@ function renderPaket(M){const sm=selection('markiert'),sa=selection('alle');
   $('#pk-sel').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;state.auswahl=b.dataset.m;save();render();};
   $('#pk-full').onclick=()=>exportPack(true);$('#pk-rp').onclick=()=>exportPack(false);
   $('#pk-unmark-btn').onclick=()=>{$('#pk-unmark').innerHTML='<div class="confirm"><span>Alle Häkchen „Markiert“ entfernen? Deine Bilder und Farben bleiben.</span><button class="btn" id="um-yes">Ja, entfernen</button><button class="btn" id="um-no">Abbrechen</button></div>';
-    $('#um-yes').onclick=()=>{for(const o of[...Object.values(state.items),...Object.values(state.overrides),...Object.values(state.mobs),...Object.values(state.deko),state.hud.heart,state.hud.hunger,state.hud.hotbar])o.on=false;state.blocks={};save();render();toast('Nichts ist mehr markiert.');};$('#um-no').onclick=()=>render();};
+    $('#um-yes').onclick=()=>{for(const o of[...Object.values(state.items),...Object.values(state.overrides),...Object.values(state.mobs),...Object.values(state.deko),...HUD_KEYS.map(k=>state.hud[k])])o.on=false;state.blocks={};save();render();toast('Nichts ist mehr markiert.');};$('#um-no').onclick=()=>render();};
   $('#pk-reset-btn').onclick=()=>{$('#pk-reset').innerHTML='<div class="confirm"><span>Wirklich alles löschen, auch eigene Items, Tiere, Blöcke und Geräusche?</span><button class="btn danger" id="rs-yes">Ja, löschen</button><button class="btn" id="rs-no">Abbrechen</button></div>';
     $('#rs-yes').onclick=()=>{state=defaultState();syncCustoms();for(const k in thumbCache)delete thumbCache[k];save();render();toast('Alles ist wieder wie am Anfang.');};$('#rs-no').onclick=()=>render();};}
 
@@ -884,12 +949,13 @@ let sheetEl=null;
 function closeSheet(){if(!sheetEl)return;recStop(true);p3Unmount();sheetEl.remove();sheetEl=null;document.body.style.overflow='';render();}
 function openSheet(id){closeSheet();document.body.style.overflow='hidden';sheetEl=document.createElement('div');sheetEl.className='sheet';document.body.append(sheetEl);
   const[kind,key]=id.split(/-(.+)/);let title='';
-  if(kind==='hud')title=key==='heart'?'Herzen':key==='hunger'?'Hunger':'Hotbar';
+  if(kind==='hud')title=HUD_DE[key];
   if(kind==='item')title=state.items[key].name;if(kind==='ov')title=OVERRIDES.find(o=>o.file===key).label;if(kind==='mob')title=mobName(key);
   if(kind==='new')title={essen:'Neues Essen',waffen:'Neues Teil',deko:'Neues Deko-Teil',mob:'Neues Tier'}[key]||'Neu';if(kind==='blk')title=BLK_BY_ID[key][1];if(kind==='deko')title=dekoName(key);
   sheetEl.innerHTML=`<div class="sheet-bar"><div class="inner"><h2>${esc(title)}</h2><button class="btn primary" id="sh-done">Fertig</button></div></div><div class="sheet-body" id="sh-body"></div>`;
   $('#sh-done',sheetEl).onclick=closeSheet;const B=$('#sh-body',sheetEl);
   if(kind==='hud'&&key==='hotbar')return editHotbar(B);
+  if(kind==='hud'&&key==='xp')return editXp(B);
   if(kind==='hud')return editHud(B,key);
   if(kind==='item')return editItem(B,key);
   if(kind==='ov')return editOverride(B,key);
@@ -905,15 +971,43 @@ function deleteRow(B,text,weg){const w=$('#del',B);w.innerHTML='<button class="b
 function previewBlock(extra=''){return`<div class="preview" id="pv"><div class="tools">${extra}</div><div class="hint">Zum Drehen wischen</div></div>`;}
 function tplOptions(list,cur){return list.map(k=>`<option value="${k}" ${k===cur?'selected':''}>${esc(T[k].label)}</option>`).join('');}
 
-function editHud(B,key){const h=state.hud[key];
-  B.innerHTML=`<div class="col">${previewBlock()}<div class="card" style="display:grid;gap:12px">${markSwitch(h.on)}
-      <label class="field">Vorlage<select id="tp">${tplOptions(TPL9,h.tpl)}</select></label>
-      <p class="status" style="margin:0">${key==='heart'?'Ersetzt die Lebens-Herzen. Halbe Herzen und der dunkle Hintergrund werden automatisch erzeugt.':'Ersetzt die Hunger-Anzeige. Halbe Symbole und der Hintergrund werden automatisch erzeugt.'}</p></div></div>
+const HUD_TPL={heart:['herz9','stern9','banane9','kirsche9','pizza9'],hunger:['karotte9','keule9','banane9','currywurst9','pizza9','kirsche9'],armor:['ruestung9','schild9','stern9']};
+const HUD_INFO={heart:'Ersetzt die Lebens-Herzen. Halbe Herzen und der dunkle Hintergrund werden automatisch erzeugt.',
+  hunger:'Ersetzt die Hunger-Anzeige. Halbe Symbole und der Hintergrund werden automatisch erzeugt.',
+  armor:'Ersetzt die Rüstungs-Anzeige über den Herzen. Sie erscheint, sobald du Rüstung trägst.'};
+function colorRow(id,cur){return`<div class="row" id="${id}">${Object.entries(ICON_COLORS).map(([n,c])=>`<button class="btn small" data-c="${c}" aria-pressed="${cur===c}"><span style="display:inline-block;width:14px;height:14px;background:${c};border:2px solid ${shade(c,-.5)};vertical-align:-2px;margin-right:6px"></span>${n}</button>`).join('')}</div>`;}
+function editHud(B,key){const h=state.hud[key];const list=[...new Set([...(HUD_TPL[key]||[]),...TPL9])];
+  B.innerHTML=`<div class="col">${previewBlock()}<div class="card"><div id="hudp"></div></div>
+    <div class="card" style="display:grid;gap:12px">${markSwitch(h.on)}
+      <label class="field">Form<select id="tp">${list.map(k=>`<option value="${k}" ${k===h.tpl?'selected':''}>${esc(T[k].label)}</option>`).join('')}</select></label>
+      <div><h3>Farbe</h3>${colorRow('cols',h.color)}<div class="row" style="margin-top:8px"><label class="part"><input type="color" id="own" value="${h.color||avgHex(h.px)}">Eigene Farbe</label></div></div>
+      <p class="status" style="margin:0">${HUD_INFO[key]} Die dunkle Umrandung bleibt beim Umfärben erhalten.</p></div></div>
     <div class="col card" id="pe"></div>`;
-  p3Mount($('#pv',B));p3ShowSprite(h.px,9);
-  const pe=PixelEditor($('#pe',B),{w:9,h:9,px:h.px,onChange:(px,f)=>{h.px=px;p3ShowSprite(px,9);if(f)save();}});
-  $('#tp',B).onchange=e=>{h.tpl=e.target.value;h.px=tplPx(h.tpl);pe.set(h.px);p3ShowSprite(h.px,9);save();};
+  const hv=document.createElement('canvas');hv.className='hotbar-prev';$('#hudp',B).append(hv);
+  const show=()=>{p3ShowSprite(h.px,9);drawHudPreview(hv);};
+  p3Mount($('#pv',B));show();
+  const pe=PixelEditor($('#pe',B),{w:9,h:9,px:h.px,onChange:(px,f)=>{h.px=px;show();if(f)save();}});
+  let base=null;const paint=(c,final)=>{if(!base)base=h.px.slice();h.px=recolorIcon(base,c);h.color=c;pe.set(h.px);show();if(final){base=null;save();}
+    B.querySelectorAll('#cols [data-c]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c===c));};
+  $('#cols',B).onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;$('#own',B).value=b.dataset.c;paint(b.dataset.c,true);};
+  $('#own',B).oninput=e=>paint(e.target.value,false);$('#own',B).onchange=e=>paint(e.target.value,true);
+  $('#tp',B).onchange=e=>{h.tpl=e.target.value;h.px=tplPx(h.tpl);if(h.color)h.px=recolorIcon(h.px,h.color);pe.set(h.px);show();save();};
   $('#on',B).onchange=e=>{h.on=e.target.checked;save();};}
+
+/* XP-Leiste: Balken, leerer Teil und Levelzahl */
+function editXp(B){const c=state.hud.xp;
+  B.innerHTML=`<div class="col"><div class="card" style="display:grid;gap:10px"><h3>Vorschau</h3><div id="hudp"></div>
+      <p class="status" style="margin:0">Der Balken füllt sich im Spiel, wenn du Erfahrung sammelst. Die Zahl darüber ist dein Level.</p></div></div>
+    <div class="col card" style="display:grid;gap:14px">${markSwitch(c.on)}
+      <div><h3>Fertige Farben</h3><div class="row" id="xp-pre">${Object.entries(XP_PRESETS).map(([n,v])=>`<button class="btn small" data-p="${n}" aria-pressed="${c.preset===n}"><span style="display:inline-block;width:14px;height:14px;background:${v[0]};border:2px solid ${v[1]};vertical-align:-2px;margin-right:6px"></span>${n}</button>`).join('')}</div></div>
+      <div><h3>Eigene Farben</h3><div class="parts">
+        <label class="part"><input type="color" id="xp-v" value="${c.voll}">Balken</label>
+        <label class="part"><input type="color" id="xp-l" value="${c.leer}">Leerer Teil</label>
+        <label class="part"><input type="color" id="xp-z" value="${c.zahl}">Levelzahl</label></div></div></div>`;
+  const hv=document.createElement('canvas');hv.className='hotbar-prev';$('#hudp',B).append(hv);
+  const upd=()=>{drawHudPreview(hv);save();};upd();$('#on',B).onchange=e=>{c.on=e.target.checked;save();};
+  const map={'xp-v':'voll','xp-l':'leer','xp-z':'zahl'};for(const[i,k]of Object.entries(map))$('#'+i,B).oninput=e=>{c[k]=e.target.value;c.preset='';B.querySelectorAll('[data-p]').forEach(b=>b.setAttribute('aria-pressed','false'));upd();};
+  $('#xp-pre',B).onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;const v=XP_PRESETS[b.dataset.p];[c.voll,c.leer,c.zahl]=v;c.preset=b.dataset.p;$('#xp-v',B).value=v[0];$('#xp-l',B).value=v[1];$('#xp-z',B).value=v[2];B.querySelectorAll('[data-p]').forEach(x=>x.setAttribute('aria-pressed',x===b));upd();};}
 
 function editHotbar(B){const c=state.hud.hotbar;
   B.innerHTML=`<div class="col"><div class="card"><h3>Vorschau</h3><div id="hbp"></div></div></div>
@@ -924,7 +1018,7 @@ function editHotbar(B){const c=state.hud.hotbar;
         <label class="part"><input type="color" id="hb-f" value="${c.feld}">Felder</label>
         <label class="part"><input type="color" id="hb-a" value="${c.auswahl}">Auswahl</label></div></div></div>`;
   const cv=document.createElement('canvas');cv.className='hotbar-prev';$('#hbp',B).append(cv);
-  const upd=()=>{drawHotbarPreview(cv,c);save();};upd();$('#on',B).onchange=e=>{c.on=e.target.checked;save();};
+  const upd=()=>{drawHudPreview(cv);save();};upd();$('#on',B).onchange=e=>{c.on=e.target.checked;save();};
   const map={'hb-r':'rahmen','hb-f':'feld','hb-a':'auswahl'};for(const[i,k]of Object.entries(map))$('#'+i,B).oninput=e=>{c[k]=e.target.value;c.preset='';B.querySelectorAll('[data-p]').forEach(b=>b.setAttribute('aria-pressed','false'));upd();};
   $('#hb-pre',B).onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;const v=HOTBAR_PRESETS[b.dataset.p];[c.rahmen,c.feld,c.auswahl]=v;c.preset=b.dataset.p;$('#hb-r',B).value=v[0];$('#hb-f',B).value=v[1];$('#hb-a',B).value=v[2];B.querySelectorAll('[data-p]').forEach(x=>x.setAttribute('aria-pressed',x===b));upd();};}
 
@@ -1275,7 +1369,7 @@ function selection(mode){const all=mode==='alle';const pick=o=>all||!!(o&&o.on);
   const mobs=Object.keys(MOBS).filter(k=>state.mobs[k]&&pick(state.mobs[k]));
   const deko=Object.keys(DEKO).filter(k=>state.deko[k]&&pick(state.deko[k]));
   const overrides=OVERRIDES.map(o=>o.file).filter(f=>pick(state.overrides[f]));
-  const hud={heart:pick(state.hud.heart),hunger:pick(state.hud.hunger),hotbar:pick(state.hud.hotbar)};
+  const hud=Object.fromEntries(HUD_KEYS.map(k=>[k,pick(state.hud[k])]));
   const tex=new Map();
   const addTex=i=>{const p=blkPath(i),px=state.blockTex[p];if(!px)return;tex.set(p,px);if(BLK_TEX[i][2]&4)tex.set(p+'_opaque',px);
     for(const c of(BLK_CARRIED[i]||[])){const cp=blkPath(c);if(!state.blockTex[cp])tex.set(cp,px);}};
@@ -1287,8 +1381,8 @@ function selection(mode){const all=mode==='alle';const pick=o=>all||!!(o&&o.on);
 async function exportPack(full){
   const msg=$('#pk-msg');const say=(t,ok)=>{if(msg)msg.innerHTML=`<p class="status" style="margin:0;color:${ok?'var(--accent)':'var(--danger)'}">${esc(t)}</p>`;};
   if(!window.JSZip){say('Der Paket-Baustein konnte nicht geladen werden. Prüfe die Internetverbindung und lade die Seite neu.');return;}
-  const sel=selection(state.auswahl);const rpStuff=sel.hud.heart||sel.hud.hunger||sel.hud.hotbar||sel.overrides.length||sel.tex.size;
-  if(!full&&!rpStuff){say('Für „Nur Aussehen“ ist nichts dabei. Markiere Anzeige, umgestaltete Items oder veränderte Blöcke, oder wähle oben „Alle Elemente“.');return;}
+  const sel=selection(state.auswahl);const rpStuff=HUD_KEYS.some(k=>sel.hud[k])||sel.overrides.length||sel.tex.size;
+  if(!full&&!rpStuff){say('Für „Nur Aussehen“ ist nichts dabei. Markiere etwas aus der Anzeige, umgestaltete Items oder veränderte Blöcke, oder wähle oben „Alle Elemente“.');return;}
   if(full&&!rpStuff&&!sel.items.length&&!sel.mobs.length&&!sel.deko.length){say('Es ist noch nichts markiert. Markiere Elemente in den Tabs oder wähle oben „Alle Elemente“.');return;}
   say('Paket wird gebaut …',true);
   try{
@@ -1312,6 +1406,10 @@ async function buildZip(full,mode='alle'){
     const h=state.hud;
     if(sel.hud.heart){await addPng(rp,'textures/ui/heart.png',h.heart.px,9,9);await addPng(rp,'textures/ui/heart_half.png',halfOf(h.heart.px),9,9);await addPng(rp,'textures/ui/heart_background.png',bgOf(h.heart.px),9,9);}
     if(sel.hud.hunger){await addPng(rp,'textures/ui/hunger_full.png',h.hunger.px,9,9);await addPng(rp,'textures/ui/hunger_half.png',halfOf(h.hunger.px),9,9);await addPng(rp,'textures/ui/hunger_background.png',bgOf(h.hunger.px),9,9);}
+    if(sel.hud.armor){await addPng(rp,'textures/ui/armor_full.png',h.armor.px,9,9);await addPng(rp,'textures/ui/armor_half.png',halfOf(h.armor.px),9,9);await addPng(rp,'textures/ui/armor_empty.png',bgOf(h.armor.px),9,9);}
+    /* XP-Leiste: Texturen in Vanilla-Größe (die Neun-Teilung kommt aus Vanilla), Levelzahl über JSON UI (nur die Farbe von progress_text_label) */
+    if(sel.hud.xp){await addPng(rp,'textures/ui/experiencebarfull.png',xpFull(h.xp),13,5);await addPng(rp,'textures/ui/experiencebarempty.png',xpEmpty(h.xp),13,5);await addPng(rp,'textures/ui/experiencenub.png',xpNub(h.xp),11,5);
+      rp.file('ui/hud_screen.json',J({namespace:'hud',progress_text_label:{color:hex01(h.xp.zahl)}}));}
     if(sel.hud.hotbar){for(let i=0;i<9;i++)await addPng(rp,`textures/ui/hotbar_${i}.png`,hotbarSlot(i,h.hotbar),20,22);
       await addPng(rp,'textures/ui/hotbar_start_cap.png',capPx(h.hotbar),1,22);await addPng(rp,'textures/ui/hotbar_end_cap.png',capPx(h.hotbar),1,22);await addPng(rp,'textures/ui/selected_hotbar_slot.png',selectedPx(h.hotbar),24,24);}
     for(const f of sel.overrides)await addPng(rp,`textures/items/${f}.png`,state.overrides[f].px,16,16);

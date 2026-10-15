@@ -6,7 +6,7 @@ Web-Werkzeug für **Minecraft Bedrock Edition**: Es baut eigene Add-ons (Behavio
 
 ## Was man damit machen kann
 
-- **HUD und Anzeige:** Herzen und Hungerleiste durch eigene 9×9-Icons ersetzen (z. B. Banane oder Currywurst). Die Hotbar lässt sich umfärben (Rahmen, Slots, Auswahlrahmen).
+- **HUD und Anzeige:** Herzen, Rüstungsanzeige und Hungerleiste durch eigene 9×9-Icons ersetzen (z. B. Herz, Rüstung, Karotte, Banane) und frei umfärben. XP-Leiste mit eigenen Farben für Balken, leeren Teil und Levelzahl (die Zahl über JSON UI: nur die Farbe von `progress_text_label` in `ui/hud_screen.json`). Hotbar umfärben (Rahmen, Slots, Auswahlrahmen). Fertige Looks färben alles passend zusammen (z. B. Diamant, Gold, Lava), eine Vorschau zeigt die ganze Anzeige wie im Spiel. Im Kreativmodus zeigt Minecraft nur die Hotbar.
 - **Essen (Food und Drink):** Banane, Kirschen, Blaubeere, Weintrauben, Nüsse und Trinkglas (bleibt nach dem Trinken erhalten). Füllt die Hungerleiste (im Kreativmodus gibt es keinen Hunger). Apfel und Brot lassen sich umtexturieren.
 - **Waffen und Werkzeug:** Waffe, Schrotflinte mit Patronen (jeweils mit Crafting-Rezept), Kastanie zum Werfen (Throwable wie der Schneeball, ohne Schaden) und Drachen zum Fliegen: In der Hand gibt er Slow Falling, beim Benutzen einen Levitation-Stoß nach oben (kleines Skript über die stabile Script API `@minecraft/server`, keine Experimente nötig). Spitzhacken und Schwerter lassen sich umtexturieren und funktionieren wie vorher.
 - **Eigene Custom Items:** Im Tab Essen als Food oder Drink, im Tab Waffen & Werkzeug als Waffe, Werkzeug (Spitzhacke, Axt, Schaufel mit `minecraft:digger` und Tool-Tags), Wurf-Item oder Flug-Item. Selbst benennen und bemalen.
