@@ -84,8 +84,9 @@ input[type=color]{width:44px;height:44px;border:2px solid var(--line);border-rad
 .preview canvas{width:100%;height:100%;display:block;cursor:grab}
 .preview .hint{position:absolute;left:10px;bottom:8px;font-size:12px;color:var(--ink-2);pointer-events:none}
 .preview .tools{position:absolute;right:8px;top:8px;display:flex;gap:6px}
-.pe-tools{display:flex;flex-wrap:wrap;gap:6px}
-.pe-tools .btn{min-width:44px}
+.pe-tools{display:flex;flex-wrap:wrap;gap:8px}
+/* Editor-Knöpfe fingergroß (44 px), auch wenn sie als .btn.small gebaut sind */
+.pe-tools .btn{min-width:44px;min-height:44px}
 .pe-wrap{overflow:auto;max-height:62vh;background:var(--surface-2);border:2px solid var(--line);border-radius:6px;padding:10px}
 .pe-wrap canvas{display:block;image-rendering:pixelated;touch-action:none;margin:0 auto}
 .pe-wrap.hand canvas{touch-action:pan-x pan-y;cursor:grab}
@@ -759,10 +760,10 @@ function PixelEditor(host,opts){
       ${opts.big?'':'<button class="btn small" id="pe-mirror" aria-pressed="false">Spiegeln</button>'}
       <button class="btn small" id="pe-hue-">Farbton −</button><button class="btn small" id="pe-hue">Farbton +</button>
       <button class="btn small" id="pe-light">Heller</button><button class="btn small" id="pe-dark">Dunkler</button>
-      <button class="btn small" id="pe-zin">＋</button><button class="btn small" id="pe-zout">−</button>
+      <button class="btn small" id="pe-zin">＋ Größer</button><button class="btn small" id="pe-zout">− Kleiner</button>
     </div>
     <div class="pe-wrap" id="pe-wrap"><canvas id="pe-cv"></canvas></div>
-    <div class="status" id="pe-status">${opts.hint||''}</div>`;
+    <div class="status" id="pe-status" aria-live="polite"></div>`;
   const cv=$('#pe-cv',host),g=cv.getContext('2d'),wrap=$('#pe-wrap',host);
   function draw(){const c=pe.cell;cv.width=pe.w*c;cv.height=pe.h*c;const cs=getComputedStyle(document.documentElement);const ca=cs.getPropertyValue('--check-a').trim()||'#ddd',cb=cs.getPropertyValue('--check-b').trim()||'#eee';
     for(let y=0;y<pe.h;y++)for(let x=0;x<pe.w;x++){const v=pe.px[y*pe.w+x];if(v){g.fillStyle=v;g.fillRect(x*c,y*c,c,c);}else{const h=c/2;g.fillStyle=ca;g.fillRect(x*c,y*c,c,c);g.fillStyle=cb;g.fillRect(x*c,y*c,h,h);g.fillRect(x*c+h,y*c+h,h,h);}}
@@ -772,23 +773,42 @@ function PixelEditor(host,opts){
   function swatches(){const used=[...new Set(pe.px.filter(Boolean))].slice(0,14);const all=[...new Set([...used,...BASE_COLORS])].slice(0,26);
     $('#pe-sw',host).innerHTML=all.map(c=>`<button style="background:${c}" data-c="${c}" class="${c===pe.color?'cur':''}" aria-label="Farbe ${c}"></button>`).join('');}
   function setColor(c){pe.color=c;$('#pe-color',host).value=c;swatches();}
-  function setTool(t){pe.tool=t;host.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t?'true':'false'));wrap.classList.toggle('hand',t==='hand');}
+  /* Hinweiszeile: title-Texte sieht man auf dem Tablet nicht, darum steht die Erklärung sichtbar unter dem Bild */
+  const hintText=()=>pe.tool==='swap'?'Farbe tauschen: Tippe im Bild auf eine Farbe. Alle Pixel in dieser Farbe bekommen deine gewählte Farbe.'
+    :[opts.hint,'Mit zwei Fingern zoomst und verschiebst du das Bild, dabei wird nicht gemalt.'].filter(Boolean).join(' ');
+  function setTool(t){pe.tool=t;host.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t?'true':'false'));wrap.classList.toggle('hand',t==='hand');$('#pe-status',host).textContent=hintText();}
   function changed(final){draw();if(final)swatches();opts.onChange(pe.px.slice(),final);}
   function snapshot(){pe.undo.push(pe.px.slice());if(pe.undo.length>60)pe.undo.shift();pe.redo=[];}
   function cellAt(e){const r=cv.getBoundingClientRect();return[Math.floor((e.clientX-r.left)/r.width*pe.w),Math.floor((e.clientY-r.top)/r.height*pe.h)];}
   function paint(x,y){if(x<0||y<0||x>=pe.w||y>=pe.h)return;const v=pe.tool==='erase'?'':pe.color;pe.px[y*pe.w+x]=v;if(pe.mirror)pe.px[y*pe.w+(pe.w-1-x)]=v;}
   function fill(x,y){const t=pe.px[y*pe.w+x],v=pe.color;if(t===v)return;const st=[[x,y]];while(st.length){const[a,b]=st.pop();if(a<0||b<0||a>=pe.w||b>=pe.h)continue;const i=b*pe.w+a;if(pe.px[i]!==t)continue;pe.px[i]=v;st.push([a+1,b],[a-1,b],[a,b+1],[a,b-1]);}}
   let down=false,last=null,rafP=false;
-  cv.addEventListener('pointerdown',e=>{if(pe.tool==='hand')return;e.preventDefault();const[x,y]=cellAt(e);if(x<0||y<0||x>=pe.w||y>=pe.h)return;
+  /* Zwei Finger (Tablet): Pinch zoomt, Ziehen verschiebt, es wird nicht gemalt. Der erste Finger landet meist etwas früher
+     und hat schon gemalt: das wird beim zweiten Finger zurückgenommen (acted = dieser Tipp hat schon etwas verändert). */
+  const fingers=new Map();let pinch=null,acted=false;
+  function pinchState(){const[a,b]=[...fingers.values()];return{mx:(a.x+b.x)/2,my:(a.y+b.y)/2,d:Math.hypot(a.x-b.x,a.y-b.y)||1};}
+  function pinchStart(){const p=pinchState(),r=cv.getBoundingClientRect();
+    pinch={d:p.d,cell:pe.cell,u:(p.mx-r.left)/r.width,v:(p.my-r.top)/r.height};}
+  function pinchMove(){const p=pinchState();const c=Math.max(3,Math.min(48,Math.round(pinch.cell*p.d/pinch.d)));
+    if(c!==pe.cell){pe.cell=c;draw();}
+    /* Der Bildpunkt, der beim Aufsetzen zwischen den Fingern lag, bleibt zwischen den Fingern */
+    const r=cv.getBoundingClientRect();wrap.scrollLeft+=r.left+pinch.u*r.width-p.mx;wrap.scrollTop+=r.top+pinch.v*r.height-p.my;}
+  cv.addEventListener('pointerdown',e=>{fingers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(fingers.size===2){if(down||acted){if(pe.undo.length)pe.px=pe.undo.pop();changed(true);}down=false;last=null;acted=false;
+      for(const id of fingers.keys()){try{cv.setPointerCapture(id);}catch(_){}}pinchStart();e.preventDefault();return;}
+    if(fingers.size>2||pinch)return;
+    if(pe.tool==='hand')return;e.preventDefault();const[x,y]=cellAt(e);if(x<0||y<0||x>=pe.w||y>=pe.h)return;
     if(pe.tool==='pick'){const v=pe.px[y*pe.w+x];if(v){setColor(v);setTool('pen');}return;}
-    snapshot();if(pe.tool==='fill'){fill(x,y);changed(true);return;}
-    if(pe.tool==='swap'){const t=pe.px[y*pe.w+x];if(!t)return;for(let i=0;i<pe.px.length;i++)if(pe.px[i]===t)pe.px[i]=pe.color;changed(true);return;}
+    snapshot();acted=true;if(pe.tool==='fill'){fill(x,y);changed(true);return;}
+    if(pe.tool==='swap'){const t=pe.px[y*pe.w+x];if(!t){pe.undo.pop();acted=false;return;}for(let i=0;i<pe.px.length;i++)if(pe.px[i]===t)pe.px[i]=pe.color;changed(true);return;}
     down=true;last=[x,y];paint(x,y);changed(false);cv.setPointerCapture(e.pointerId);});
-  cv.addEventListener('pointermove',e=>{const[x,y]=cellAt(e);if(opts.describe)$('#pe-status',host).textContent=opts.describe(x,y)||opts.hint||'';
+  cv.addEventListener('pointermove',e=>{if(fingers.has(e.pointerId))fingers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pinch){if(fingers.size>=2)pinchMove();return;}
+    const[x,y]=cellAt(e);if(opts.describe)$('#pe-status',host).textContent=opts.describe(x,y)||hintText();
     if(!down)return;if(last&&last[0]===x&&last[1]===y)return;
     const[x0,y0]=last;const n=Math.max(Math.abs(x-x0),Math.abs(y-y0));for(let k=1;k<=n;k++)paint(Math.round(x0+(x-x0)*k/n),Math.round(y0+(y-y0)*k/n));last=[x,y];
     if(!rafP){rafP=true;requestAnimationFrame(()=>{rafP=false;changed(false);});}});
-  const up=()=>{if(down){down=false;changed(true);}};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  const up=e=>{fingers.delete(e.pointerId);if(!fingers.size)acted=false;if(pinch){if(!fingers.size)pinch=null;return;}if(down){down=false;changed(true);}};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
   host.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
   $('#pe-color',host).oninput=e=>{pe.color=e.target.value;swatches();};
   $('#pe-sw',host).onclick=e=>{const b=e.target.closest('[data-c]');if(b){setColor(b.dataset.c);if(pe.tool==='erase'||pe.tool==='pick'||pe.tool==='hand')setTool('pen');}};
