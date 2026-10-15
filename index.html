@@ -593,7 +593,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTi
 const LS='weltbaukasten-v1';
 function defaultState(){
   /* Nichts ist vorab markiert (on:false). Beim Paketbau wählt man „Alle Elemente“ oder „Nur markierte“ (state.auswahl). */
-  const st={name:'Meine Welt',version:0,ids:{rp:uuid(),rpm:uuid(),bp:uuid(),bpm:uuid(),bps:uuid()},auswahl:'markiert',marksV:1,
+  const st={name:'Meine Welt',version:0,ids:{rp:uuid(),rpm:uuid(),bp:uuid(),bpm:uuid(),bps:uuid()},auswahl:'markiert',marksV:1,hudV:1,
     hud:{heart:{on:false,tpl:'herz9',px:tplPx('herz9')},hunger:{on:false,tpl:'karotte9',px:tplPx('karotte9')},hotbar:{on:false,preset:'Smaragd',rahmen:'#2f6b4f',feld:'#8fd1a9',auswahl:'#ffd84a'},
       armor:{on:false,tpl:'ruestung9',px:tplPx('ruestung9')},xp:{on:false,preset:'Klassisch',voll:'#7ec850',leer:'#22301f',zahl:'#80ff20'}},
     items:{},overrides:{},mobs:{},deko:{},blockTex:{},blocks:{}};
@@ -610,6 +610,11 @@ function normalize(s){s.blockTex=s.blockTex||{};s.blocks=s.blocks||{};if(s.ids&&
   for(const k of BUILTIN_DEKO)if(!s.deko[k])s.deko[k]={on:false,colors:mobColors(DEKO[k]),edits:{}};if(s.auswahl!=='alle')s.auswahl='markiert';
   const dh=defaultState().hud;if(!s.hud)s.hud=dh;for(const k of HUD_KEYS){if(!s.hud[k])s.hud[k]=dh[k];if(typeof s.hud[k].on!=='boolean')s.hud[k].on=false;}
   if(!s.marksV){for(const o of[...Object.values(s.items),...Object.values(s.overrides),...Object.values(s.mobs)])o.on=false;s.marksV=1;}
+  /* Einmalig (hudV): Bis 15.10.2026 waren Banane (Herzen) und Currywurst (Hunger) die Standardformen. Wer sie nie verändert hat,
+     bekommt die neuen Standardformen Herz und Karotte. Selbst gemalte oder umgefärbte Formen bleiben, die Markierung bleibt. */
+  if(!s.hudV){const alt={heart:'banane9',hunger:'currywurst9'};
+    for(const[k,t]of Object.entries(alt)){const h=s.hud[k];if(h&&h.tpl===t&&Array.isArray(h.px)&&h.px.join()===tplPx(t).join())Object.assign(h,{tpl:dh[k].tpl,px:dh[k].px});}
+    s.hudV=1;}
   return s;}
 /* Eigene Items und Tiere aus dem Zustand in ITEMS/MOBS eintragen (bzw. gelöschte entfernen) */
 function makeMob(s){const d=formDef(s.custom.form);d.name=s.name;const bi=BIOMES[s.custom.biome];if(bi)d.biomes=bi.tags.slice();d.custom=true;return d;}
