@@ -133,11 +133,13 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--surface);borde
 </head><body>
 <div class="wrap">
   <header class="top">
-    <h1>PixelWerkstatt<small>Eigene Items, Tiere, Blöcke und Anzeigen für Minecraft auf dem Tablet</small></h1>
+    <h1>PixelWerkstatt<small>Eigenes Essen, Waffen, Deko, Tiere, Blöcke und Anzeigen für Minecraft auf dem Tablet</small></h1>
   </header>
   <nav class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="anzeige" aria-selected="true">Anzeige</button>
-    <button role="tab" data-tab="items" aria-selected="false">Items</button>
+    <button role="tab" data-tab="essen" aria-selected="false">Essen</button>
+    <button role="tab" data-tab="waffen" aria-selected="false">Waffen &amp; Werkzeug</button>
+    <button role="tab" data-tab="deko" aria-selected="false">Deko</button>
     <button role="tab" data-tab="tiere" aria-selected="false">Tiere</button>
     <button role="tab" data-tab="bloecke" aria-selected="false">Blöcke</button>
     <button role="tab" data-tab="paket" aria-selected="false">Paket</button>
@@ -237,12 +239,9 @@ const ITEMS={
   weintrauben:{name:'Weintrauben',kind:'food',tpl:'weintrauben',value:3,label:'Sättigung'},
   nuesse:{name:'Nüsse',kind:'food',tpl:'nuesse',value:3,label:'Sättigung'},
   trinkglas:{name:'Trinkglas',kind:'drink',tpl:'trinkglas',value:2,label:'Sättigung'},
-  computer:{name:'Computer',kind:'misc',tpl:'computer',value:0,stack:1},
-  laptop:{name:'Laptop',kind:'misc',tpl:'laptop',value:0,stack:1},
-  koffer:{name:'Koffer mit Rollen',kind:'misc',tpl:'koffer',value:0,stack:1},
-  flugdrachen:{name:'Drachen',kind:'misc',tpl:'flugdrachen',value:0,stack:1},
-  kastanie:{name:'Kastanie',kind:'misc',tpl:'kastanie',value:0},
-  palme:{name:'Palme',kind:'misc',tpl:'palme',value:0},
+  /* Computer, Laptop, Koffer und Palme sind seit der Deko-Umstellung Blöcke (siehe DEKO), mit derselben Kennung wb:… */
+  kastanie:{name:'Kastanie',kind:'throw',tpl:'kastanie',value:0},
+  flugdrachen:{name:'Drachen',kind:'fly',tpl:'flugdrachen',value:0},
 };
 const OVERRIDES=[
   {file:'diamond_pickaxe',label:'Diamant-Spitzhacke',def:'schwert'},
@@ -253,8 +252,8 @@ const OVERRIDES=[
   {file:'netherite_pickaxe',label:'Netherit-Spitzhacke',def:'spitzhacke'},
   {file:'diamond_sword',label:'Diamantschwert',def:'laser'},
   {file:'iron_sword',label:'Eisenschwert',def:'schwert'},
-  {file:'apple',label:'Apfel',def:'kirschen'},
-  {file:'bread',label:'Brot',def:'banane'},
+  {file:'apple',label:'Apfel',def:'kirschen',cat:'essen'},
+  {file:'bread',label:'Brot',def:'banane',cat:'essen'},
 ];
 const MOBS={
   vogel:{name:'Vogel',texW:64,fly:true,flap:{deg:40,rad:18},health:4,speed:0.25,flySpeed:0.18,box:[0.45,0.45],biomes:['forest','plains'],weight:10,herd:[1,3],loot:'minecraft:feather',
@@ -398,7 +397,65 @@ const ITEM_KINDS={food:{label:'Essen',info:'kann man essen',val:'Sättigung',max
   weapon:{label:'Waffe',info:'zum Kämpfen',val:'Schaden',max:20,def:7,tpl:'schwert'},
   tool:{label:'Werkzeug',info:'Spitzhacke, Axt oder Schaufel',val:'Abbau-Tempo',max:20,def:8,tpl:'spitzhacke'},
   drink:{label:'Getränk',info:'kann man trinken',val:'Sättigung',max:10,def:2,tpl:'trinkglas'},
+  throw:{label:'Zum Werfen',info:'fliegt wie ein Schneeball',val:'',max:0,def:0,tpl:'kastanie'},
+  fly:{label:'Zum Fliegen',info:'in der Hand halten und schweben',val:'',max:0,def:0,tpl:'flugdrachen'},
+  /* misc: nur noch für ältere eigene Items („Gegenstand zum Halten“), wird nicht mehr angeboten */
   misc:{label:'Gegenstand',info:'zum Sammeln und Herumtragen',val:'',max:0,def:0,tpl:'computer'}};
+/* Welche Item-Art in welchen Tab gehört */
+const KIND_CAT={food:'essen',drink:'essen',weapon:'waffen',gun:'waffen',ammo:'waffen',tool:'waffen',throw:'waffen',fly:'waffen',misc:'deko'};
+const CAT_KINDS={essen:['food','drink'],waffen:['weapon','tool','throw','fly']};
+const itemCat=k=>KIND_CAT[ITEMS[k].kind]||'waffen';
+const ovCat=f=>(OVERRIDES.find(o=>o.file===f)||{}).cat||'waffen';
+
+/* ---------------- Deko: eigene Blöcke mit eigener Form ----------------
+   Bedrock Custom Blocks mit minecraft:geometry (bis 30×30×30 Pixel), Drehung zum Spieler über
+   minecraft:placement_direction + minecraft:transformation. Vorne ist −Z (Norden), wie bei den Mobs.
+   box: [Breite, Höhe] des Kollisionsquaders (mittig, quadratisch, damit die Drehung egal ist). */
+const DEKO={
+  computer:{name:'Computer',texW:64,light:6,sound:'metal',box:[14,15],
+    parts:{gehaeuse:['Gehäuse','#d9dde2'],bildschirm:['Bildschirm','#2f7bd6'],tastatur:['Tastatur','#3a3f45']},
+    bones:[{name:'body',pivot:[0,0,0],cubes:[
+      {origin:[-7,4,0],size:[14,10,2],part:'gehaeuse',faces:{north:'bildschirm'}},
+      {origin:[-1,1,1],size:[2,3,1],part:'gehaeuse'},{origin:[-3,0,0],size:[6,1,3],part:'gehaeuse'},
+      {origin:[-6,0,-6],size:[12,1,4],part:'tastatur'}]}]},
+  laptop:{name:'Laptop',texW:64,light:4,sound:'metal',box:[12,10],
+    parts:{gehaeuse:['Gehäuse','#b9bec5'],bildschirm:['Bildschirm','#2f7bd6'],tastatur:['Tastatur','#3a3f45']},
+    bones:[{name:'body',pivot:[0,0,0],cubes:[
+      {origin:[-6,0,-5],size:[12,1,9],part:'gehaeuse',faces:{up:'tastatur'}},
+      {origin:[-6,1,3],size:[12,9,1],part:'gehaeuse',faces:{north:'bildschirm'}}]}]},
+  koffer:{name:'Koffer mit Rollen',texW:64,sound:'wood',box:[10,16],
+    parts:{koffer:['Koffer','#d0452f'],griff:['Griff','#2b2b2b'],rollen:['Rollen','#1c1c1c']},
+    bones:[{name:'body',pivot:[0,0,0],cubes:[
+      {origin:[-5,2,-3],size:[10,12,6],part:'koffer'},
+      {origin:[-3,14,0],size:[1,4,1],part:'griff'},{origin:[2,14,0],size:[1,4,1],part:'griff'},{origin:[-3,18,0],size:[6,1,1],part:'griff'},
+      {origin:[-4,0,-2],size:[2,2,2],part:'rollen'},{origin:[2,0,-2],size:[2,2,2],part:'rollen'},
+      {origin:[-4,0,0],size:[2,2,2],part:'rollen'},{origin:[2,0,0],size:[2,2,2],part:'rollen'}]}]},
+  palme:{name:'Palme',texW:64,sound:'grass',box:[4,16],
+    parts:{stamm:['Stamm','#8b5a2b'],blaetter:['Blätter','#4caf50'],nuesse:['Kokosnüsse','#5a3a1a']},
+    bones:[{name:'body',pivot:[0,0,0],cubes:[
+      {origin:[-1,0,-1],size:[2,9,2],part:'stamm'},{origin:[0,9,-1],size:[2,8,2],part:'stamm'},{origin:[1,17,-1],size:[2,6,2],part:'stamm'},
+      {origin:[-7,23,-1],size:[16,1,4],part:'blaetter'},{origin:[0,23,-8],size:[4,1,16],part:'blaetter'},
+      {origin:[-8,21,-1],size:[1,2,4],part:'blaetter'},{origin:[8,21,-1],size:[1,2,4],part:'blaetter'},
+      {origin:[0,21,-8],size:[4,2,1],part:'blaetter'},{origin:[0,21,7],size:[4,2,1],part:'blaetter'},
+      {origin:[0,21,1],size:[2,2,2],part:'nuesse'},{origin:[2,21,-1],size:[2,2,2],part:'nuesse'}]}]},
+  tisch:{name:'Tisch',texW:64,sound:'wood',box:[16,16],
+    parts:{platte:['Tischplatte','#a2834f'],beine:['Beine','#6b4f2a']},
+    bones:[{name:'body',pivot:[0,0,0],cubes:[
+      {origin:[-8,14,-8],size:[16,2,16],part:'platte'},
+      {origin:[-7,0,-7],size:[2,14,2],part:'beine'},{origin:[5,0,-7],size:[2,14,2],part:'beine'},
+      {origin:[-7,0,5],size:[2,14,2],part:'beine'},{origin:[5,0,5],size:[2,14,2],part:'beine'}]}]}};
+/* Zusätzliche Grundform nur für eigene Deko-Teile */
+const DEKO_NEW={
+  kiste:{name:'Kiste',texW:64,sound:'wood',box:[12,12],parts:{holz:['Holz','#b8874b'],rand:['Rand','#6b4f2a']},
+    bones:[{name:'body',pivot:[0,0,0],cubes:[{origin:[-6,0,-6],size:[12,12,12],part:'holz'},
+      {origin:[-6.5,11,-6.5],size:[13,1,13],part:'rand'},{origin:[-6.5,0,-6.5],size:[13,1,13],part:'rand'}]}]}};
+const DEKO_SRC=JSON.parse(JSON.stringify(DEKO));
+const DEKO_FORMS={computer:{label:'Gerät mit Bildschirm',info:'wie ein Computer'},laptop:{label:'Flaches Gerät',info:'wie ein Laptop'},
+  koffer:{label:'Koffer',info:'steht auf dem Boden'},palme:{label:'Pflanze',info:'groß, fast zwei Blöcke'},tisch:{label:'Tisch',info:'zum Draufstellen'},kiste:{label:'Kiste',info:'kleiner Würfel'}};
+function formDeko(f){return JSON.parse(JSON.stringify(DEKO_SRC[f]||DEKO_NEW[f]||DEKO_SRC.kiste));}
+const BUILTIN_DEKO=Object.keys(DEKO);
+const MODEL=k=>MOBS[k]||DEKO[k];
+const dekoName=k=>(state.deko[k]&&state.deko[k].name)||DEKO[k].name;
 const TOOLS={pickaxe:{label:'Spitzhacke',tpl:'spitzhacke',ench:'pickaxe',itag:'minecraft:is_pickaxe',btag:'minecraft:is_pickaxe_item_destructible',legacy:"'stone','metal'",tier:true},
   axe:{label:'Axt',tpl:'axt',ench:'axe',itag:'minecraft:is_axe',btag:'minecraft:is_axe_item_destructible',legacy:"'wood','pumpkin','plant'"},
   shovel:{label:'Schaufel',tpl:'schaufel',ench:'shovel',itag:'minecraft:is_shovel',btag:'minecraft:is_shovel_item_destructible',legacy:"'dirt','sand','gravel','grass','snow'"}};
@@ -470,16 +527,20 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTi
 const LS='weltbaukasten-v1';
 function defaultState(){
   /* Nichts ist vorab markiert (on:false). Beim Paketbau wählt man „Alle Elemente“ oder „Nur markierte“ (state.auswahl). */
-  const st={name:'Meine Welt',version:0,ids:{rp:uuid(),rpm:uuid(),bp:uuid(),bpm:uuid()},auswahl:'markiert',marksV:1,
+  const st={name:'Meine Welt',version:0,ids:{rp:uuid(),rpm:uuid(),bp:uuid(),bpm:uuid(),bps:uuid()},auswahl:'markiert',marksV:1,
     hud:{heart:{on:false,tpl:'banane9',px:tplPx('banane9')},hunger:{on:false,tpl:'currywurst9',px:tplPx('currywurst9')},hotbar:{on:false,preset:'Smaragd',rahmen:'#2f6b4f',feld:'#8fd1a9',auswahl:'#ffd84a'}},
-    items:{},overrides:{},mobs:{},blockTex:{},blocks:{}};
+    items:{},overrides:{},mobs:{},deko:{},blockTex:{},blocks:{}};
   for(const k of BUILTIN_ITEMS){const d=ITEMS[k];st.items[k]={on:false,name:d.name,tpl:d.tpl,px:tplPx(d.tpl),value:d.value};}
   for(const o of OVERRIDES)st.overrides[o.file]={on:false,tpl:o.def,px:tplPx(o.def)};
   for(const k of BUILTIN_MOBS){const m=MOBS[k];st.mobs[k]={on:false,colors:mobColors(m),edits:{},sounds:{}};}
+  for(const k of BUILTIN_DEKO)st.deko[k]={on:false,colors:mobColors(DEKO[k]),edits:{}};
   return st;}
 function mobColors(m){const colors={};for(const[p,v]of Object.entries(m.parts))colors[p]=v[1];return colors;}
 /* Ältere Speicherstände ergänzen. Einmalig (marksV) alle alten „im Paket“-Häkchen entfernen: ab jetzt markiert man selbst. */
-function normalize(s){s.blockTex=s.blockTex||{};s.blocks=s.blocks||{};if(s.auswahl!=='alle')s.auswahl='markiert';
+function normalize(s){s.blockTex=s.blockTex||{};s.blocks=s.blocks||{};if(s.ids&&!s.ids.bps)s.ids.bps=uuid();
+  /* Deko: Markierung von den früheren Hand-Gegenständen (Computer, Laptop, Koffer, Palme) übernehmen */
+  if(!s.deko){s.deko={};for(const k of BUILTIN_DEKO)s.deko[k]={on:!!(s.items&&s.items[k]&&s.items[k].on),colors:mobColors(DEKO[k]),edits:{}};}
+  for(const k of BUILTIN_DEKO)if(!s.deko[k])s.deko[k]={on:false,colors:mobColors(DEKO[k]),edits:{}};if(s.auswahl!=='alle')s.auswahl='markiert';
   if(!s.hud)s.hud=defaultState().hud;for(const k of['heart','hunger','hotbar'])if(typeof s.hud[k].on!=='boolean')s.hud[k].on=false;
   if(!s.marksV){for(const o of[...Object.values(s.items),...Object.values(s.overrides),...Object.values(s.mobs)])o.on=false;s.marksV=1;}
   return s;}
@@ -489,10 +550,12 @@ function syncCustoms(){
   for(const k of Object.keys(ITEMS))if(!BUILTIN_ITEMS.includes(k)&&!(state.items[k]&&state.items[k].custom))delete ITEMS[k];
   for(const k of Object.keys(MOBS))if(!BUILTIN_MOBS.includes(k)&&!(state.mobs[k]&&state.mobs[k].custom))delete MOBS[k];
   for(const[k,s]of Object.entries(state.items))if(s.custom&&!ITEMS[k]&&ITEM_KINDS[s.custom.kind])ITEMS[k]={name:s.name,kind:s.custom.kind,tpl:s.tpl||'leer',value:s.value,label:ITEM_KINDS[s.custom.kind].val,custom:true};
-  for(const[k,s]of Object.entries(state.mobs))if(s.custom&&!MOBS[k])MOBS[k]=makeMob(s);}
+  for(const[k,s]of Object.entries(state.mobs))if(s.custom&&!MOBS[k])MOBS[k]=makeMob(s);
+  for(const k of Object.keys(DEKO))if(!BUILTIN_DEKO.includes(k)&&!(state.deko[k]&&state.deko[k].custom))delete DEKO[k];
+  for(const[k,s]of Object.entries(state.deko))if(s.custom&&!DEKO[k]){const d=formDeko(s.custom.form);d.name=s.name;d.custom=true;DEKO[k]=d;}}
 function cleanName(v){return String(v||'').replace(/[\r\n\t=#]/g,' ').replace(/\s+/g,' ').trim().slice(0,24);}
 function newKey(name){let b=name.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,20)||'eigen';
-  if(/^[0-9]/.test(b))b='x'+b;const taken=k=>ITEMS[k]||MOBS[k]||state.items[k]||state.mobs[k]||k==='schrot'||/_rezept$/.test(k);let k=b,n=2;while(taken(k))k=b+'_'+n++;return k;}
+  if(/^[0-9]/.test(b))b='x'+b;const taken=k=>ITEMS[k]||MOBS[k]||DEKO[k]||state.items[k]||state.mobs[k]||state.deko[k]||k==='schrot'||/_(rezept|wurf)$/.test(k);let k=b,n=2;while(taken(k))k=b+'_'+n++;return k;}
 let state=(()=>{try{const s=localStorage.getItem(LS);if(s){const p=JSON.parse(s);const d=defaultState();
   for(const k of Object.keys(d.items))if(!p.items||!p.items[k]){p.items=p.items||{};p.items[k]=d.items[k];}
   for(const k of Object.keys(d.overrides))if(!p.overrides||!p.overrides[k]){p.overrides=p.overrides||{};p.overrides[k]=d.overrides[k];}
@@ -512,7 +575,7 @@ function layoutMob(m){
 function faceRects(c){const[u,v]=c.uv,[w,h,d]=c.size;return{east:[u,v+d,d,h],north:[u+d,v+d,w,h],west:[u+d+w,v+d,d,h],south:[u+2*d+w,v+d,w,h],up:[u+d,v,w,d],down:[u+d+w,v,w,d]};}
 const FACE_SHADE={up:.08,north:0,south:-.04,east:-.06,west:-.06,down:-.16};
 function generateMob(key,colors){
-  const m=MOBS[key];const{texW,texH}=layoutMob(m);const px=new Array(texW*texH).fill('');const owner=new Array(texW*texH).fill(null);
+  const m=MODEL(key);const{texW,texH}=layoutMob(m);const px=new Array(texW*texH).fill('');const owner=new Array(texW*texH).fill(null);
   m.bones.forEach((b,bi)=>b.cubes.forEach((c,ci)=>{const rects=faceRects(c);
     for(const[f,[rx,ry,rw,rh]]of Object.entries(rects)){
       const part=(c.faces&&c.faces[f])||c.part;const base=colors[part]||'#ff00ff';
@@ -525,6 +588,7 @@ function generateMob(key,colors){
           if(xx===0||yy===0||xx===rw-1||yy===rh-1)col=shade(colors.muster,(r-.5)*.1);
           const sx=Math.round(rw*.62);if(xx===sx&&(yy===Math.round(rh*.3)||yy===Math.round(rh*.7)))col=colors.punkte;
           if(xx===rw-2&&yy===Math.floor(rh/2))col=colors.punkte;}
+        if(part==='bildschirm'&&yy>0&&xx<rw/2&&(xx===yy+1||xx===yy+2))col=shade(base,.32);
         px[i]=col;owner[i]={bone:b.name,face:f,part};}}
     if(c.eyes){const[rx,ry,rw,rh]=rects.north;
       if(c.eyes==='seite'){const[ex,ey0,ew,eh]=rects.east,[wx,wy0,ww,wh]=rects.west;const ey=ey0+Math.max(0,Math.floor(eh*.35));
@@ -534,7 +598,7 @@ function generateMob(key,colors){
       else{const ey=ry+Math.max(0,Math.floor(rh*.35));const xs=rw>=4?[rx+1,rx+rw-2]:[rx,rx+rw-1];for(const ex of xs)px[ey*texW+ex]='#141414';}}
   }));
   return{px,owner,texW,texH};}
-function mobAtlas(key){const s=state.mobs[key];const g=generateMob(key,s.colors);for(const[i,v]of Object.entries(s.edits||{}))g.px[+i]=v;return g;}
+function mobAtlas(key){const s=state.mobs[key]||state.deko[key];const g=generateMob(key,s.colors);for(const[i,v]of Object.entries(s.edits||{}))g.px[+i]=v;return g;}
 
 /* ---------------- Anzeige-Grafiken ---------------- */
 function halfOf(px){return px.map((v,i)=>(i%9)>=5?'':v);}
@@ -577,7 +641,7 @@ function cubeGeo(c,tw,th){const[x0,y0,z0]=c.origin,[w,h,d]=c.size,x1=x0+w,y1=y0+
   face([[x1,y1,z1],[x0,y1,z1],[x1,y1,z0],[x0,y1,z0]],[u+d,v,w,d],[0,1,0]);
   face([[x1,y0,z0],[x0,y0,z0],[x1,y0,z1],[x0,y0,z1]],[u+d+w,v,w,d],[0,-1,0]);
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));g.setIndex(idx);return g;}
-function buildMob3D(key,atlasCanvas){const m=MOBS[key];const{texW,texH}=layoutMob(m);
+function buildMob3D(key,atlasCanvas){const m=MODEL(key);const{texW,texH}=layoutMob(m);
   const tex=new THREE.CanvasTexture(atlasCanvas);tex.magFilter=THREE.NearestFilter;tex.minFilter=THREE.NearestFilter;tex.generateMipmaps=false;
   const mat=new THREE.MeshLambertMaterial({map:tex,side:THREE.DoubleSide,alphaTest:.5});
   const root=new THREE.Group(),groups={};let mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];
@@ -592,7 +656,7 @@ function p3ShowSprite(px,n){if(!p3Ensure())return;const keep=P3.kind==='sprite';
   if(!keep){P3.dist=n*2.6;P3.yaw=.5;P3.pitch=.25;}}
 function p3ShowMob(key,atlasCanvas){if(!p3Ensure())return;p3Clear();P3.kind='mob';const o=buildMob3D(key,atlasCanvas);P3.obj=o.root;P3.groups=o.groups;P3.tex=o.tex;P3.mob=key;P3.scene.add(o.root);P3.kind='mob';
   P3.center.copy(o.center);P3.dist=o.size*2.4+6;P3.yaw=Math.PI+.7;P3.pitch=.3;}
-function animMob(key,groups,t){const m=MOBS[key];
+function animMob(key,groups,t){const m=MODEL(key);
   if(m.walk==='vier'){const a=Math.sin(t*4)*.45;groups.leg0.rotation.x=a;groups.leg3.rotation.x=a;groups.leg1.rotation.x=-a;groups.leg2.rotation.x=-a;if(groups.trunk)groups.trunk.rotation.x=Math.sin(t*1.6)*.12;if(groups.ear_l){groups.ear_l.rotation.y=Math.sin(t*2)*.18;groups.ear_r.rotation.y=-Math.sin(t*2)*.18;}}
   if(m.wiggle)for(const w of m.wiggle){const g=groups[w.bone];if(!g)continue;const v=Math.sin(t*w.speed+(w.phase||0)*Math.PI/180)*w.deg*Math.PI/180;if(w.axis===0)g.rotation.x=v;else if(w.axis===1)g.rotation.y=v;else g.rotation.z=v;}
   if(m.walk==='zwei'||m.walk==='beine'){const a=Math.sin(t*5)*.5;groups.leg0.rotation.x=a;groups.leg1.rotation.x=-a;if(groups.arm_r){groups.arm_r.rotation.x=a;groups.arm_l.rotation.x=-a;}}
@@ -677,7 +741,7 @@ function PixelEditor(host,opts){
 
 /* ---------------- Ansichten ---------------- */
 let tab='anzeige';
-$('#tabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(!b)return;tab=b.dataset.tab;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));render();};
+$('#tabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(!b)return;tab=b.dataset.tab;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));try{b.scrollIntoView({inline:'nearest',block:'nearest'});}catch(e){}render();};
 function spriteURL(px,n){return pxCanvas(px,n,n).toDataURL();}
 function tile(id,img,name,on){return`<button class="tile" data-open="${id}"><span class="slot"><img alt="" src="${img}"></span><span class="name">${esc(name)}</span>${on?'<span class="state on">✓ markiert</span>':''}</button>`;}
 function newTile(id,name){return`<button class="tile neu" data-open="${id}"><span class="slot">+</span><span class="name">${esc(name)}</span></button>`;}
@@ -706,13 +770,8 @@ function render(){const M=$('#main');
       <div class="grid">${tile('hud-heart',spriteURL(state.hud.heart.px,9),'Herzen',state.hud.heart.on)}${tile('hud-hunger',spriteURL(state.hud.hunger.px,9),'Hunger',state.hud.hunger.on)}${tile('hud-hotbar',pxCanvas(hotbarSlot(1,state.hud.hotbar),20,22).toDataURL(),'Hotbar',state.hud.hotbar.on)}</div></div>
       <div class="card"><h3>So sieht deine Hotbar aus</h3><div id="hbp"></div></div></section>`;
     drawHotbarPreview(hb,state.hud.hotbar);hb.className='hotbar-prev';$('#hbp').append(hb);}
-  if(tab==='items'){
-    M.innerHTML=`<section class="panel"><div class="group"><h2>Neue Items</h2><p class="lead">Diese Items gibt es danach zusätzlich im Spiel. Du findest sie im Kreativ-Inventar über die Suche.</p>
-      <div class="grid">${BUILTIN_ITEMS.map(k=>tile('item-'+k,spriteURL(state.items[k].px,16),state.items[k].name,state.items[k].on)).join('')}</div></div>
-      <div class="group"><h2>Eigene Items</h2><p class="lead">Male dein eigenes Item und gib ihm einen Namen: zum Beispiel einen Fisch zum Essen, ein Schwert oder eine Spitzhacke.</p>
-      <div class="grid">${Object.keys(state.items).filter(k=>state.items[k].custom&&ITEMS[k]).map(k=>tile('item-'+k,spriteURL(state.items[k].px,16),state.items[k].name,state.items[k].on)).join('')}${newTile('new-item','Neues Item')}</div></div>
-      <div class="group"><h2>Vorhandene Items umgestalten</h2><p class="lead">Ein Item bekommt ein neues Aussehen und funktioniert weiter wie vorher. Eine Spitzhacke, die wie eine Waffe aussieht, baut also trotzdem Blöcke ab.</p>
-      <div class="grid">${OVERRIDES.map(o=>tile('ov-'+o.file,spriteURL(state.overrides[o.file].px,16),o.label,state.overrides[o.file].on)).join('')}</div></div></section>`;}
+  if(tab==='essen'||tab==='waffen')renderItemTab(M,tab);
+  if(tab==='deko')renderDeko(M);
   if(tab==='tiere'){
     M.innerHTML=`<section class="panel"><div class="group"><h2>Tiere</h2><p class="lead">Die Tiere tauchen in passenden Gegenden von selbst auf und es gibt sie als Spawn-Ei. Alle sind friedlich. Den Elefanten zähmst du mit Weizen, Äpfeln oder Bananen, den Drachen mit Fleisch oder Fisch. Danach kann man sie reiten. Den Drachen gibt es nur als Spawn-Ei, und auf ihm fliegst du: Wohin du schaust, dorthin fliegt er, Springen lässt ihn steigen.</p>
       <div class="grid">${BUILTIN_MOBS.map(mobTile).join('')}</div></div>
@@ -722,9 +781,31 @@ function render(){const M=$('#main');
   if(tab==='paket')renderPaket(M);
   M.onclick=e=>{const b=e.target.closest('[data-open]');if(b)openSheet(b.dataset.open);};}
 
+function itemTile(k){return tile('item-'+k,spriteURL(state.items[k].px,16),state.items[k].name,state.items[k].on);}
+function ovTile(o){return tile('ov-'+o.file,spriteURL(state.overrides[o.file].px,16),o.label,state.overrides[o.file].on);}
+/* Tabs „Essen“ und „Waffen & Werkzeug“: eingebaute Items, eigene Items, umgestaltete Vanilla-Items der passenden Art */
+function renderItemTab(M,cat){const E=cat==='essen';
+  const builtin=BUILTIN_ITEMS.filter(k=>itemCat(k)===cat),own=Object.keys(state.items).filter(k=>state.items[k].custom&&ITEMS[k]&&itemCat(k)===cat);
+  M.innerHTML=`<section class="panel"><div class="group"><h2>${E?'Essen und Trinken':'Waffen &amp; Werkzeug'}</h2>
+      <p class="lead">${E?'Alles hier füllt im Spiel die Hungerleiste. Im Kreativmodus gibt es keinen Hunger, dort kann man nicht essen. Zum Ausprobieren also im Überlebensmodus spielen.'
+        :'Zum Kämpfen, Abbauen, Werfen und Fliegen. Du findest alles im Kreativ-Inventar über die Suche.'}</p>
+      <div class="grid">${builtin.map(itemTile).join('')}</div></div>
+    <div class="group"><h2>${E?'Eigenes Essen':'Eigene Waffen und Werkzeuge'}</h2><p class="lead">${E?'Male dein eigenes Essen oder Getränk und gib ihm einen Namen, zum Beispiel einen Fisch.':'Male dein eigenes Schwert, Werkzeug, Wurfding oder Fluggerät und gib ihm einen Namen.'}</p>
+      <div class="grid">${own.map(itemTile).join('')}${newTile('new-'+cat,E?'Neues Essen':'Neues Teil')}</div></div>
+    <div class="group"><h2>${E?'Vorhandenes Essen umgestalten':'Vorhandene Werkzeuge umgestalten'}</h2><p class="lead">Es bekommt ein neues Aussehen und funktioniert weiter wie vorher.${E?'':' Eine Spitzhacke, die wie eine Waffe aussieht, baut also trotzdem Blöcke ab.'}</p>
+      <div class="grid">${OVERRIDES.filter(o=>ovCat(o.file)===cat).map(ovTile).join('')}</div></div></section>`;}
+function dekoTile(k){return tile('deko-'+k,thumbCache['d:'+k]||(thumbCache['d:'+k]=mobThumb(k)||spriteURL(new Array(256).fill(Object.values(state.deko[k].colors)[0]),16)),dekoName(k),state.deko[k].on);}
+function renderDeko(M){const own=Object.keys(state.deko).filter(k=>state.deko[k].custom&&DEKO[k]);
+  const hold=Object.keys(state.items).filter(k=>state.items[k].custom&&ITEMS[k]&&itemCat(k)==='deko');
+  M.innerHTML=`<section class="panel"><div class="group"><h2>Deko</h2><p class="lead">Dinge zum Hinstellen. Sie drehen sich beim Hinstellen zu dir. Computer und Laptop leuchten ein bisschen. Den Laptop kannst du zum Beispiel auf den Tisch stellen.</p>
+      <div class="grid">${BUILTIN_DEKO.map(dekoTile).join('')}</div></div>
+    <div class="group"><h2>Eigene Deko</h2><p class="lead">Erfinde ein eigenes Deko-Teil: Grundform wählen, Namen geben und bemalen.</p>
+      <div class="grid">${own.map(dekoTile).join('')}${newTile('new-deko','Neues Deko-Teil')}</div></div>
+    ${hold.length?`<div class="group"><h2>Gegenstände zum Halten</h2><p class="lead">Deine früheren Gegenstände. Man hält sie in der Hand, hinstellen geht nicht.</p><div class="grid">${hold.map(itemTile).join('')}</div></div>`:''}</section>`;}
+
 function selSummary(x){const p=[];const h=['heart','hunger','hotbar'].filter(k=>x.hud[k]).length;
   const n=(z,a,b)=>z+' '+(z===1?a:b);
-  if(h)p.push(n(h,'Anzeige','Anzeigen'));if(x.items.length)p.push(n(x.items.length,'Item','Items'));if(x.overrides.length)p.push(n(x.overrides.length,'umgestaltetes Item','umgestaltete Items'));if(x.mobs.length)p.push(n(x.mobs.length,'Tier','Tiere'));if(x.blocks)p.push(n(x.blocks,'Block','Blöcke'));
+  if(h)p.push(n(h,'Anzeige','Anzeigen'));if(x.items.length)p.push(n(x.items.length,'Item','Items'));if(x.overrides.length)p.push(n(x.overrides.length,'umgestaltetes Item','umgestaltete Items'));if(x.mobs.length)p.push(n(x.mobs.length,'Tier','Tiere'));if(x.deko.length)p.push(n(x.deko.length,'Deko-Teil','Deko-Teile'));if(x.blocks)p.push(n(x.blocks,'Block','Blöcke'));
   return p.join(' · ')||'noch nichts';}
 function renderPaket(M){const sm=selection('markiert'),sa=selection('alle');
   M.innerHTML=`<section class="panel">
@@ -737,7 +818,7 @@ function renderPaket(M){const sm=selection('markiert'),sa=selection('alle');
         <p class="status" style="margin:6px 0 0">Markieren kannst du jedes Element in seinem Fenster mit dem Häkchen „Markiert“. Von Blöcken kommen nur Seiten mit, die du verändert hast.</p></div>
       <div class="row"><span class="chip">Version ${state.version}</span></div>
       <div class="row"><button class="btn primary" id="pk-full">Komplettpaket erstellen</button><button class="btn" id="pk-rp">Nur Aussehen erstellen</button></div>
-      <p class="status" style="margin:0">Komplettpaket: alles inklusive neuer Items und Tiere. In dieser Welt gibt es dann keine Erfolge.<br>Nur Aussehen: Herzen, Hunger, Hotbar, umgestaltete Items und Blöcke. Erfolge bleiben an.</p>
+      <p class="status" style="margin:0">Komplettpaket: alles inklusive neuer Items, Tiere und Deko. In dieser Welt gibt es dann keine Erfolge.<br>Nur Aussehen: Herzen, Hunger, Hotbar, umgestaltete Items und Blöcke (ohne neue Items, Tiere und Deko). Erfolge bleiben an.</p>
       <div id="pk-msg"></div>
     </div>
     <div class="group"><h2>So kommt das Paket ins Spiel</h2>
@@ -756,7 +837,7 @@ function renderPaket(M){const sm=selection('markiert'),sa=selection('alle');
   $('#pk-sel').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;state.auswahl=b.dataset.m;save();render();};
   $('#pk-full').onclick=()=>exportPack(true);$('#pk-rp').onclick=()=>exportPack(false);
   $('#pk-unmark-btn').onclick=()=>{$('#pk-unmark').innerHTML='<div class="confirm"><span>Alle Häkchen „Markiert“ entfernen? Deine Bilder und Farben bleiben.</span><button class="btn" id="um-yes">Ja, entfernen</button><button class="btn" id="um-no">Abbrechen</button></div>';
-    $('#um-yes').onclick=()=>{for(const o of[...Object.values(state.items),...Object.values(state.overrides),...Object.values(state.mobs),state.hud.heart,state.hud.hunger,state.hud.hotbar])o.on=false;state.blocks={};save();render();toast('Nichts ist mehr markiert.');};$('#um-no').onclick=()=>render();};
+    $('#um-yes').onclick=()=>{for(const o of[...Object.values(state.items),...Object.values(state.overrides),...Object.values(state.mobs),...Object.values(state.deko),state.hud.heart,state.hud.hunger,state.hud.hotbar])o.on=false;state.blocks={};save();render();toast('Nichts ist mehr markiert.');};$('#um-no').onclick=()=>render();};
   $('#pk-reset-btn').onclick=()=>{$('#pk-reset').innerHTML='<div class="confirm"><span>Wirklich alles löschen, auch eigene Items, Tiere, Blöcke und Geräusche?</span><button class="btn danger" id="rs-yes">Ja, löschen</button><button class="btn" id="rs-no">Abbrechen</button></div>';
     $('#rs-yes').onclick=()=>{state=defaultState();syncCustoms();for(const k in thumbCache)delete thumbCache[k];save();render();toast('Alles ist wieder wie am Anfang.');};$('#rs-no').onclick=()=>render();};}
 
@@ -767,7 +848,7 @@ function openSheet(id){closeSheet();document.body.style.overflow='hidden';sheetE
   const[kind,key]=id.split(/-(.+)/);let title='';
   if(kind==='hud')title=key==='heart'?'Herzen':key==='hunger'?'Hunger':'Hotbar';
   if(kind==='item')title=state.items[key].name;if(kind==='ov')title=OVERRIDES.find(o=>o.file===key).label;if(kind==='mob')title=mobName(key);
-  if(kind==='new')title=key==='item'?'Neues Item':'Neues Tier';if(kind==='blk')title=BLK_BY_ID[key][1];
+  if(kind==='new')title={essen:'Neues Essen',waffen:'Neues Teil',deko:'Neues Deko-Teil',mob:'Neues Tier'}[key]||'Neu';if(kind==='blk')title=BLK_BY_ID[key][1];if(kind==='deko')title=dekoName(key);
   sheetEl.innerHTML=`<div class="sheet-bar"><div class="inner"><h2>${esc(title)}</h2><button class="btn primary" id="sh-done">Fertig</button></div></div><div class="sheet-body" id="sh-body"></div>`;
   $('#sh-done',sheetEl).onclick=closeSheet;const B=$('#sh-body',sheetEl);
   if(kind==='hud'&&key==='hotbar')return editHotbar(B);
@@ -775,7 +856,8 @@ function openSheet(id){closeSheet();document.body.style.overflow='hidden';sheetE
   if(kind==='item')return editItem(B,key);
   if(kind==='ov')return editOverride(B,key);
   if(kind==='mob')return editMob(B,key);
-  if(kind==='new')return key==='item'?newItem(B):newMob(B);
+  if(kind==='new')return key==='mob'?newMob(B):key==='deko'?newDeko(B):newItem(B,key);
+  if(kind==='deko')return editDeko(B,key);
   if(kind==='blk')return editBlock(B,key);}
 const markSwitch=on=>`<label class="switch"><input type="checkbox" id="on" ${on?'checked':''}>Markiert (kommt ins Paket)</label>`;
 /* Löschen mit Rückfrage; ruft weg() nach dem Ja auf */
@@ -811,6 +893,8 @@ function editHotbar(B){const c=state.hud.hotbar;
 function editItem(B,key){const it=state.items[key],d=ITEMS[key],own=!!it.custom;
   const valueField=d.kind==='ammo'?'<p class="status" style="margin:0">Patronen braucht die Schrotflinte zum Schießen. Herstellung: Schwarzpulver + Eisennugget ergibt 8 Patronen.</p>':
     d.kind==='misc'?'<p class="status" style="margin:0">Ein Gegenstand zum Sammeln, Herumtragen und Verschenken. Man hält ihn in der Hand, aufstellen kann man ihn nicht.</p>':
+    d.kind==='throw'?'<p class="status" style="margin:0">Zum Werfen: Tippe mit dem Ding in der Hand auf den Bildschirm, dann fliegt es wie ein Schneeball. Es macht keinen Schaden.</p>':
+    d.kind==='fly'?'<p class="status" style="margin:0">Zum Fliegen: Halte es in der Hand, dann fällst du ganz langsam. Tippe auf den Bildschirm, dann zieht dich ein Windstoß nach oben. So oft du willst.</p>':
     `<label class="field">${d.label}: <b id="vv">${it.value}</b><input type="range" id="val" min="1" max="${d.kind==='food'||d.kind==='drink'?10:20}" value="${it.value}"></label>`;
   B.innerHTML=`<div class="col">${previewBlock()}<div class="card" style="display:grid;gap:12px">${markSwitch(it.on)}
       <label class="field">Name im Spiel<input type="text" id="nm" maxlength="24" value="${esc(it.name)}"></label>${valueField}
@@ -829,10 +913,10 @@ function editItem(B,key){const it=state.items[key],d=ITEMS[key],own=!!it.custom;
   if(own)deleteRow(B,'Dieses Item wirklich löschen? In Welten, in denen es schon benutzt wurde, verschwindet es nach dem nächsten Paket.',()=>{delete state.items[key];syncCustoms();save();closeSheet();toast('Item gelöscht.');});}
 
 /* Neues eigenes Item anlegen */
-function newItem(B){let kind='food';
+function newItem(B,cat){const kinds=CAT_KINDS[cat]||CAT_KINDS.essen;let kind=kinds[0];
   B.innerHTML=`<div class="col card" style="display:grid;gap:14px">
-      <label class="field">Name im Spiel<input type="text" id="nm" maxlength="24" placeholder="zum Beispiel Fisch"></label>
-      <div><h3>Was für ein Item?</h3><div class="choice" id="kinds">${Object.entries(ITEM_KINDS).map(([k,v])=>`<button data-k="${k}" aria-pressed="${k===kind}"><b>${v.label}</b><span>${v.info}</span></button>`).join('')}</div></div>
+      <label class="field">Name im Spiel<input type="text" id="nm" maxlength="24" placeholder="${cat==='essen'?'zum Beispiel Fisch':'zum Beispiel Zauberstab'}"></label>
+      <div><h3>Was für ein Item?</h3><div class="choice" id="kinds">${kinds.map(k=>[k,ITEM_KINDS[k]]).map(([k,v])=>`<button data-k="${k}" aria-pressed="${k===kind}"><b>${v.label}</b><span>${v.info}</span></button>`).join('')}</div></div>
       <label class="field" id="toolrow" hidden>Werkzeug<select id="tool">${Object.entries(TOOLS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select></label>
       <label class="field">Startbild<select id="tp">${tplOptions(TPL16,ITEM_KINDS[kind].tpl)}</select></label>
       <button class="btn primary" id="mk">Item anlegen</button><p class="status" id="st" style="margin:0"></p></div>
@@ -845,6 +929,44 @@ function newItem(B){let kind='food';
     const key=newKey(name),tpl=$('#tp',B).value;
     state.items[key]={on:true,name,tpl,px:tplPx(tpl),value:ITEM_KINDS[kind].def,custom:{kind,tool:kind==='tool'?$('#tool',B).value:null}};
     syncCustoms();save();toast(`„${name}“ ist angelegt und markiert.`);openSheet('item-'+key);};}
+
+/* Deko-Teil bearbeiten: Farben und Pixel wie bei den Tieren, 3D-Vorschau */
+function editDeko(B,key){const m=DEKO[key],s=state.deko[key];layoutMob(m);
+  B.innerHTML=`<div class="col">${previewBlock()}
+    <div class="card" style="display:grid;gap:12px">${markSwitch(s.on)}
+      <label class="field">Name im Spiel<input type="text" id="nm" maxlength="24" value="${esc(dekoName(key))}"></label>
+      <div><h3>Farben</h3><div class="parts" id="parts">${Object.entries(m.parts).map(([p,[lab]])=>`<label class="part"><input type="color" data-part="${p}" value="${s.colors[p]}">${esc(lab)}</label>`).join('')}</div></div>
+      <div class="row"><button class="btn small" id="rnd">Zufallsfarben</button><button class="btn small" id="std">Standardfarben</button></div>
+      <p class="status" style="margin:0">Im Spiel stellst du es hin wie einen Block. Es dreht sich zu dir${m.light?' und leuchtet ein bisschen':''}. Abbauen gibt es dir zurück.${s.custom?' Grundform: '+esc(DEKO_FORMS[s.custom.form]?DEKO_FORMS[s.custom.form].label:''):''}</p>
+      ${s.custom?'<div id="del"></div>':''}</div></div>
+    <div class="col card" id="pe"></div>`;
+  let atlas=mobAtlas(key);let atlasCv=pxCanvas(atlas.px,atlas.texW,atlas.texH);
+  p3Mount($('#pv',B));p3ShowMob(key,atlasCv);P3.yaw=Math.PI+.5;
+  const regions=[];for(const b of m.bones)for(const c of b.cubes)for(const r of Object.values(faceRects(c)))regions.push(r);
+  const describe=(x,y)=>{const o=atlas.owner[y*atlas.texW+x];return o?`${FACE_DE[o.face]} · ${m.parts[o.part]?m.parts[o.part][0]:''}`:'';};
+  function refreshTex(){const g=atlasCv.getContext('2d');g.clearRect(0,0,atlasCv.width,atlasCv.height);g.drawImage(pxCanvas(atlas.px,atlas.texW,atlas.texH),0,0);if(P3.tex)P3.tex.needsUpdate=true;}
+  const pe=PixelEditor($('#pe',B),{w:atlas.texW,h:atlas.texH,px:atlas.px,big:true,cell:8,regions,describe,
+    hint:'Das ist die Oberfläche, aufgeklappt wie ein Bastelbogen. Fahre über ein Feld, um zu sehen, welcher Teil es ist.',
+    onChange:(px,f)=>{atlas.px=px;refreshTex();if(f){const base=generateMob(key,s.colors).px;const ed={};for(let i=0;i<px.length;i++)if(px[i]!==base[i])ed[i]=px[i];s.edits=ed;delete thumbCache['d:'+key];save();}}});
+  function recolor(){atlas=mobAtlas(key);pe.set(atlas.px);refreshTex();delete thumbCache['d:'+key];save();}
+  $('#parts',B).oninput=e=>{const p=e.target.dataset.part;if(!p)return;s.colors[p]=e.target.value;recolor();};
+  $('#rnd',B).onclick=()=>{for(const p of Object.keys(m.parts))s.colors[p]=hsl2hex(Math.random(),.45+Math.random()*.4,.35+Math.random()*.35);B.querySelectorAll('[data-part]').forEach(i=>i.value=s.colors[i.dataset.part]);recolor();};
+  $('#std',B).onclick=()=>{for(const[p,v]of Object.entries(m.parts))s.colors[p]=v[1];s.edits={};B.querySelectorAll('[data-part]').forEach(i=>i.value=s.colors[i.dataset.part]);recolor();toast('Farben und Pixel sind wieder im Original.');};
+  $('#on',B).onchange=e=>{s.on=e.target.checked;save();};
+  $('#nm',B).oninput=e=>{const n=cleanName(e.target.value);s.name=n||undefined;if(s.custom&&!n)s.name=m.name;$('.sheet-bar h2').textContent=dekoName(key);save();};
+  if(s.custom)deleteRow(B,'Dieses Deko-Teil wirklich löschen? In Welten verschwindet es nach dem nächsten Paket.',()=>{delete state.deko[key];delete thumbCache['d:'+key];syncCustoms();save();closeSheet();toast('Deko-Teil gelöscht.');});}
+
+/* Neues eigenes Deko-Teil anlegen */
+function newDeko(B){let form='kiste';
+  B.innerHTML=`<div class="col card" style="display:grid;gap:14px">
+      <label class="field">Name im Spiel<input type="text" id="nm" maxlength="24" placeholder="zum Beispiel Schatzkiste"></label>
+      <div><h3>Grundform</h3><div class="choice" id="forms">${Object.entries(DEKO_FORMS).map(([k,v])=>`<button data-f="${k}" aria-pressed="${k===form}"><b>${v.label}</b><span>${v.info}</span></button>`).join('')}</div></div>
+      <button class="btn primary" id="mk">Deko-Teil anlegen</button><p class="status" id="st" style="margin:0"></p></div>
+    <div class="col card"><p class="status" style="margin:0">Die Grundform bestimmt die Form im Spiel. Farben und Pixel gestaltest du danach selbst.</p></div>`;
+  $('#forms',B).onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;form=b.dataset.f;B.querySelectorAll('[data-f]').forEach(x=>x.setAttribute('aria-pressed',x===b));};
+  $('#mk',B).onclick=()=>{const name=cleanName($('#nm',B).value);if(!name){$('#st',B).textContent='Gib dem Deko-Teil zuerst einen Namen.';$('#nm',B).focus();return;}
+    const key=newKey(name);state.deko[key]={on:true,name,colors:mobColors(formDeko(form)),edits:{},custom:{form}};
+    syncCustoms();save();toast(`„${name}“ ist angelegt und markiert.`);openSheet('deko-'+key);};}
 
 /* Neues eigenes Tier anlegen */
 function newMob(B){let form='fisch';
@@ -1003,7 +1125,7 @@ function walkAnims(){return{format_version:'1.8.0',animations:{
   ...Object.fromEntries(Object.entries(MOBS).filter(([,m])=>m.flap).map(([k,m])=>{const sp=Math.round(m.flap.rad*57.3);return['animation.wb.flattern_'+k,{loop:true,bones:{wing_l:{rotation:[0,0,`math.sin(query.life_time*${sp})*${m.flap.deg}`]},wing_r:{rotation:[0,0,`-math.sin(query.life_time*${sp})*${m.flap.deg}`]}}}];})),
   /* Wackeln (Schwanzflosse, Tentakel) für Schwimm-Formen */
   ...Object.fromEntries(Object.entries(MOBS).filter(([,m])=>m.wiggle).map(([k,m])=>['animation.wb.wackeln_'+k,{loop:true,bones:Object.fromEntries(m.wiggle.map(w=>{const r=[0,0,0];r[w.axis]=`math.sin(query.life_time*${Math.round(w.speed*57.3)}+${w.phase||0})*${w.deg}`;return[w.bone,{rotation:r}];}))}]))}};}
-function geoJson(key){const m=MOBS[key];const{texW,texH}=layoutMob(m);let mx=0;for(const b of m.bones)for(const c of b.cubes)for(let k=0;k<3;k++)mx=Math.max(mx,Math.abs(c.origin[k]),Math.abs(c.origin[k]+c.size[k]));
+function geoJson(key){const m=MODEL(key);const{texW,texH}=layoutMob(m);let mx=0;for(const b of m.bones)for(const c of b.cubes)for(let k=0;k<3;k++)mx=Math.max(mx,Math.abs(c.origin[k]),Math.abs(c.origin[k]+c.size[k]));
   return{format_version:'1.12.0','minecraft:geometry':[{description:{identifier:'geometry.wb_'+key,texture_width:texW,texture_height:texH,visible_bounds_width:Math.ceil(mx*2/16)+1,visible_bounds_height:Math.ceil(mx*2/16)+1,visible_bounds_offset:[0,mx/16,0]},
     bones:m.bones.map(b=>Object.assign({name:b.name,pivot:b.pivot},b.parent?{parent:b.parent}:{},{cubes:b.cubes.map(c=>({origin:c.origin,size:c.size,uv:c.uv}))}))}]};}
 function clientEntity(key){const m=MOBS[key],s=state.mobs[key];const cols=Object.values(s.colors);const anims={},scr=[];
@@ -1048,6 +1170,8 @@ function spawnRule(key){const m=MOBS[key];
   'minecraft:spawns_on_surface':{},'minecraft:brightness_filter':{min:7,max:15,adjust_for_weather:false},'minecraft:weight':{default:m.weight},
   'minecraft:herd':{min_size:m.herd[0],max_size:m.herd[1]},'minecraft:biome_filter':{any_of:m.biomes.map(b=>({test:'has_biome_tag',value:b}))}}]}};}
 function itemJson(key){const it=state.items[key],d=ITEMS[key];const C={'minecraft:icon':{textures:{default:'wb_'+key}},'minecraft:display_name':{value:it.name}};let cat='items';
+  if(d.kind==='throw'){Object.assign(C,{'minecraft:max_stack_size':{value:16},'minecraft:throwable':{do_swing_animation:true,launch_power_scale:1.0,max_launch_power:1.0},'minecraft:projectile':{projectile_entity:'wb:'+key+'_wurf'}});cat='equipment';}
+  if(d.kind==='fly'){Object.assign(C,{'minecraft:max_stack_size':{value:1},'minecraft:hand_equipped':{value:true}});cat='equipment';}
   if(d.kind==='misc'){Object.assign(C,{'minecraft:max_stack_size':{value:d.stack||64}});}
   if(d.kind==='drink'){Object.assign(C,{'minecraft:max_stack_size':{value:1},'minecraft:food':{nutrition:it.value,saturation_modifier:0.6,can_always_eat:true,using_converts_to:'wb:'+key},'minecraft:use_modifiers':{use_duration:1.6,movement_modifier:0.35},'minecraft:use_animation':'drink'});}
   if(d.kind==='food'){Object.assign(C,{'minecraft:max_stack_size':{value:64},'minecraft:food':{nutrition:it.value,saturation_modifier:0.6,can_always_eat:false},'minecraft:use_modifiers':{use_duration:1.6,movement_modifier:0.35},'minecraft:use_animation':'eat'});cat='nature';}
@@ -1064,6 +1188,43 @@ function itemJson(key){const it=state.items[key],d=ITEMS[key];const C={'minecraf
 function schrotBP(){return{format_version:'1.20.80','minecraft:entity':{description:{identifier:'wb:schrot',is_spawnable:false,is_summonable:true,is_experimental:false},components:{
   'minecraft:collision_box':{width:0.25,height:0.25},'minecraft:physics':{},'minecraft:pushable':{is_pushable:false,is_pushable_by_piston:true},
   'minecraft:projectile':{on_hit:{impact_damage:{damage:state.items.flinte.value,knockback:true,semi_random_diff_damage:false,destroy_on_hit:true},remove_on_hit:{}},power:3.2,gravity:0.03,inertia:1,liquid_inertia:0.6,uncertainty_base:3,uncertainty_multiplier:0,anchor:1,offset:[0,-0.1,0],hit_sound:'bow.hit'}}}};}
+/* Wurf-Projektil (wie der Schneeball in Vanilla): kein Schaden, verschwindet beim Aufprall */
+function wurfBP(key){return{format_version:'1.20.80','minecraft:entity':{description:{identifier:'wb:'+key+'_wurf',is_spawnable:false,is_summonable:true,is_experimental:false,runtime_identifier:'minecraft:snowball'},components:{
+  'minecraft:collision_box':{width:0.25,height:0.25},'minecraft:physics':{},'minecraft:pushable':{is_pushable:true,is_pushable_by_piston:true},
+  'minecraft:projectile':{on_hit:{impact_damage:{damage:0,knockback:true},particle_on_hit:{particle_type:'snowballpoof',num_particles:6,on_entity_hit:true,on_other_hit:true},remove_on_hit:{}},power:1.5,gravity:0.03,angle_offset:0,offset:[0,-0.1,0],anchor:1}}}};}
+const wurfRP=key=>({format_version:'1.10.0','minecraft:client_entity':{description:{identifier:'wb:'+key+'_wurf',materials:{default:'snowball'},textures:{default:'textures/items/wb/'+key},geometry:{default:'geometry.item_sprite'},render_controllers:['controller.render.item_sprite'],animations:{flying:'animation.actor.billboard'},scripts:{animate:['flying']}}}});
+/* Fliegen mit dem Drachen: kleines Skript (Script API, stabile Version @minecraft/server 1.15.0, keine Experimente nötig).
+   In der Hand halten = langsames Fallen (slow_falling), Benutzen (Tippen) = Windstoß nach oben (levitation). */
+const SCRIPT_API='1.15.0';
+function flyScript(ids){return`import { world, system, EquipmentSlot } from '@minecraft/server';
+const FLIEGEN = new Set(${JSON.stringify(ids)});
+function haelt(p) {
+  try { const it = p.getComponent('minecraft:equippable').getEquipment(EquipmentSlot.Mainhand); return !!it && FLIEGEN.has(it.typeId); }
+  catch (e) { return false; }
+}
+system.runInterval(() => {
+  for (const p of world.getAllPlayers()) {
+    if (haelt(p) && !p.isOnGround) p.addEffect('slow_falling', 30, { amplifier: 0, showParticles: false });
+  }
+}, 10);
+world.afterEvents.itemUse.subscribe((ev) => {
+  if (!ev.itemStack || !FLIEGEN.has(ev.itemStack.typeId)) return;
+  ev.source.addEffect('levitation', 25, { amplifier: 4, showParticles: false });
+  ev.source.addEffect('slow_falling', 100, { amplifier: 0, showParticles: false });
+});
+`;}
+/* Deko-Block: eigene Geometrie, dreht sich beim Hinstellen zum Spieler. cardinal_direction = Blickrichtung des Spielers;
+   das Modell schaut nach −Z (Norden), also z. B. Blick nach Norden → um 180° drehen, damit es den Spieler ansieht. */
+function blockJson(key){const m=DEKO[key];const[w,h]=m.box;const cols=Object.values(state.deko[key].colors);
+  const comps={'minecraft:geometry':{identifier:'geometry.wb_'+key},'minecraft:material_instances':{'*':{texture:'wb_'+key,render_method:'alpha_test'}},
+    'minecraft:collision_box':{origin:[-w/2,0,-w/2],size:[w,h,w]},'minecraft:selection_box':{origin:[-w/2,0,-w/2],size:[w,Math.min(h,16),w]},
+    'minecraft:destructible_by_mining':{seconds_to_destroy:0.4},'minecraft:destructible_by_explosion':{explosion_resistance:2},
+    'minecraft:light_dampening':0,'minecraft:map_color':cols[0]};
+  if(m.light)comps['minecraft:light_emission']=m.light;
+  const rot={north:180,south:0,west:-90,east:90};
+  return{format_version:'1.21.40','minecraft:block':{description:{identifier:'wb:'+key,menu_category:{category:'items'},
+    traits:{'minecraft:placement_direction':{enabled_states:['minecraft:cardinal_direction']}}},components:comps,
+    permutations:Object.entries(rot).map(([d,r])=>({condition:`query.block_state('minecraft:cardinal_direction') == '${d}'`,components:{'minecraft:transformation':{rotation:[0,r,0]}}}))}};}
 const schrotRP=()=>({format_version:'1.10.0','minecraft:client_entity':{description:{identifier:'wb:schrot',materials:{default:'snowball'},textures:{default:'textures/items/wb/patrone'},geometry:{default:'geometry.item_sprite'},render_controllers:['controller.render.item_sprite'],animations:{flying:'animation.actor.billboard'},scripts:{animate:['flying']}}}});
 const RECIPES={
   patrone:{format_version:'1.20.10','minecraft:recipe_shapeless':{description:{identifier:'wb:patrone_rezept'},tags:['crafting_table'],ingredients:[{item:'minecraft:gunpowder'},{item:'minecraft:iron_nugget'}],result:{item:'wb:patrone',count:8}}},
@@ -1074,6 +1235,7 @@ const RECIPES={
 function selection(mode){const all=mode==='alle';const pick=o=>all||!!(o&&o.on);
   const items=Object.keys(ITEMS).filter(k=>state.items[k]&&pick(state.items[k]));if(items.includes('flinte')&&!items.includes('patrone'))items.push('patrone');
   const mobs=Object.keys(MOBS).filter(k=>state.mobs[k]&&pick(state.mobs[k]));
+  const deko=Object.keys(DEKO).filter(k=>state.deko[k]&&pick(state.deko[k]));
   const overrides=OVERRIDES.map(o=>o.file).filter(f=>pick(state.overrides[f]));
   const hud={heart:pick(state.hud.heart),hunger:pick(state.hud.hunger),hotbar:pick(state.hud.hotbar)};
   const tex=new Map();
@@ -1082,37 +1244,25 @@ function selection(mode){const all=mode==='alle';const pick=o=>all||!!(o&&o.on);
   let blocks=0;
   if(all){for(let i=0;i<BLK_TEX.length;i++)addTex(i);blocks=BLOCKS.filter(blkEdited).length;}
   else for(const id of Object.keys(state.blocks)){const b=BLK_BY_ID[id];if(!b||!state.blocks[id].on)continue;blocks++;for(const i of new Set(Object.values(b[2])))addTex(i);}
-  return{items,mobs,overrides,hud,tex,blocks};}
+  return{items,mobs,deko,overrides,hud,tex,blocks};}
 
-let downloadsNs=null;(async()=>{try{if(window.claude&&claude.use)downloadsNs=await claude.use('downloads');}catch(e){}})();
 async function exportPack(full){
   const msg=$('#pk-msg');const say=(t,ok)=>{if(msg)msg.innerHTML=`<p class="status" style="margin:0;color:${ok?'var(--accent)':'var(--danger)'}">${esc(t)}</p>`;};
   if(!window.JSZip){say('Der Paket-Baustein konnte nicht geladen werden. Prüfe die Internetverbindung und lade die Seite neu.');return;}
-  if(!downloadsNs){try{if(window.claude&&claude.use)downloadsNs=await claude.use('downloads');}catch(e){}}
   const sel=selection(state.auswahl);const rpStuff=sel.hud.heart||sel.hud.hunger||sel.hud.hotbar||sel.overrides.length||sel.tex.size;
   if(!full&&!rpStuff){say('Für „Nur Aussehen“ ist nichts dabei. Markiere Anzeige, umgestaltete Items oder veränderte Blöcke, oder wähle oben „Alle Elemente“.');return;}
-  if(full&&!rpStuff&&!sel.items.length&&!sel.mobs.length){say('Es ist noch nichts markiert. Markiere Elemente in den Tabs oder wähle oben „Alle Elemente“.');return;}
+  if(full&&!rpStuff&&!sel.items.length&&!sel.mobs.length&&!sel.deko.length){say('Es ist noch nichts markiert. Markiere Elemente in den Tabs oder wähle oben „Alle Elemente“.');return;}
   say('Paket wird gebaut …',true);
   try{
     const nm=safeName(state.name);const zip=await buildZip(full,state.auswahl);
-    /* MIME application/octet-stream: Chrome auf Android haengt sonst ".zip" an den Dateinamen an (JSZip setzt standardmaessig application/zip). So bleibt .mcaddon/.mcpack erhalten und Android bietet Minecraft zum Oeffnen an. */
+    /* MIME application/octet-stream: so behält die Datei auf Android ihre Endung .mcaddon/.mcpack und lässt sich direkt mit Minecraft öffnen. */
     const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/octet-stream'});
-    if(!downloadsNs){
-      const direct=nm+(full?'.mcaddon':'.mcpack');let ok=false;
-      try{const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=direct;a.rel='noopener';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),120000);ok=true;}catch(e){}
-      state.version++;save();
-      if(!window.claude){if(msg)msg.innerHTML=ok?`<div class="note" style="display:grid;gap:6px"><b>Download gestartet: „${esc(direct)}“ (Version ${state.version})</b><span>Tippe unten im Hinweis „Download abgeschlossen“ auf <b>Öffnen</b> und wähle <b>Minecraft</b>. Hinweis verpasst? In der App <b>Dateien</b> → <b>Downloads</b> die Datei antippen.</span></div>`:'<p class="status" style="color:var(--danger)">Der Download ließ sich nicht starten. Öffne die Datei in Chrome und versuche es nochmal.</p>';
-        if(tab==='paket'){const c=[...document.querySelectorAll('.card .chip')].pop();if(c)c.textContent='Version '+state.version;}return;}
-      let denied=false;try{const p=window.claude&&claude.use?await claude.use('permissions'):null;if(p)denied=(await p.state('downloads'))==='denied';}catch(e){}
-      if(msg)msg.innerHTML=`<div class="note" style="display:grid;gap:8px"><b>${ok?'Download gestartet: „'+esc(direct)+'“':'Speichern ist hier nicht möglich.'}</b>
-        <span>Taucht keine Datei in „Downloads“ auf, kann diese Ansicht nicht speichern. Dann so: Öffne den Chat mit Claude in der <b>Claude-App</b> auf dem Tablet oder auf <b>claude.ai</b> im Browser (angemeldet) und öffne den Baukasten dort über die Karte. Deine Einstellungen musst du dort neu machen, sie bleiben pro Gerät und Browser gespeichert.</span>
-        ${denied?'<button class="btn small" id="pk-perm">Speichern erlauben</button>':''}</div>`;
-      const pb=$('#pk-perm');if(pb)pb.onclick=async()=>{try{const p=await claude.use('permissions');await p.manage();}catch(e){toast('Öffne oben das Menü der Seite und erlaube dort „Downloads“.');}};
-      return;}
-    const filename=nm+(full?'.mcaddon.zip':'.mcpack.zip');
-    try{await downloadsNs.save({filename,data:blob});state.version++;save();say(`Gespeichert als „${filename}“ (Version ${state.version}). Jetzt in der Dateien-App „.zip“ am Ende entfernen und die Datei mit Minecraft öffnen.`,true);
-      if(tab==='paket'){const c=[...document.querySelectorAll('.card .chip')].pop();if(c)c.textContent='Version '+state.version;}}
-    catch(err){const code=err&&err.code;if(code==='declined')say('Speichern abgebrochen.');else if(code==='rate_limited')say('Es ist schon ein Speichern-Fenster offen. Kurz warten und nochmal tippen.');else say('Speichern hat nicht geklappt. Bitte nochmal versuchen.');}
+    const direct=nm+(full?'.mcaddon':'.mcpack');let ok=false;
+    try{const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=direct;a.rel='noopener';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),120000);ok=true;}catch(e){}
+    if(!ok){say('Der Download ließ sich nicht starten. Lade die Seite neu und versuche es nochmal.');return;}
+    state.version++;save();
+    if(msg)msg.innerHTML=`<div class="note" style="display:grid;gap:6px"><b>Download gestartet: „${esc(direct)}“ (Version ${state.version})</b><span>Tippe unten im Hinweis „Download abgeschlossen“ auf <b>Öffnen</b> und wähle <b>Minecraft</b>. Hinweis verpasst? In der App <b>Dateien</b> → <b>Downloads</b> die Datei antippen.</span></div>`;
+    if(tab==='paket'){const c=[...document.querySelectorAll('.card .chip')].pop();if(c)c.textContent='Version '+state.version;}
   }catch(e){say('Beim Bauen ist ein Fehler passiert: '+(e&&e.message||e));}}
 
 async function buildZip(full,mode='alle'){
@@ -1130,7 +1280,8 @@ async function buildZip(full,mode='alle'){
     /* Vanilla-Blocktexturen überschreiben: gleicher Pfad im Resource Pack ersetzt das Original */
     for(const[p,px]of sel.tex)await addPng(rp,`textures/blocks/${p}.png`,px,16,16);
     if(full){
-      const items=sel.items,mobs=sel.mobs;
+      const items=sel.items,mobs=sel.mobs,deko=sel.deko;
+      const wuerfe=items.filter(k=>ITEMS[k].kind==='throw'),flieger=items.filter(k=>ITEMS[k].kind==='fly');
       const tex={};for(const k of items){await addPng(rp,`textures/items/wb/${k}.png`,state.items[k].px,16,16);tex['wb_'+k]={textures:'textures/items/wb/'+k};}
       rp.file('textures/item_texture.json',J({resource_pack_name:'wb',texture_name:'atlas.items',texture_data:tex}));
       const lang=[];for(const k of items)lang.push(`item.wb:${k}=${state.items[k].name}`);
@@ -1142,14 +1293,25 @@ async function buildZip(full,mode='alle'){
         const ruf=snd.ruf?`wb.${k}.ruf`:null,aua=snd.aua?`wb.${k}.aua`:ruf;if(ruf)ev.ambient=ruf;if(aua){ev.hurt=aua;ev.death=aua;}
         if(Object.keys(ev).length)es['wb:'+k]={volume:1.0,pitch:[0.9,1.1],events:ev};}
       if(items.includes('flinte')||items.includes('patrone'))rp.file('entity/wb_schrot.entity.json',J(schrotRP()));
+      for(const k of wuerfe)rp.file(`entity/wb_${k}_wurf.entity.json`,J(wurfRP(k)));
+      /* Deko-Blöcke: Textur, Modell, Klang, Name */
+      const tt={},bj={format_version:[1,1,0]};
+      for(const k of deko){const a=mobAtlas(k);await addPng(rp,`textures/blocks/wb/${k}.png`,a.px,a.texW,a.texH);tt['wb_'+k]={textures:'textures/blocks/wb/'+k};
+        rp.file(`models/blocks/wb_${k}.geo.json`,J(geoJson(k)));bj['wb:'+k]={sound:DEKO[k].sound||'stone'};lang.push(`tile.wb:${k}.name=${dekoName(k)}`);}
+      if(deko.length){rp.file('textures/terrain_texture.json',J({resource_pack_name:'wb',texture_name:'atlas.terrain',padding:8,num_mip_levels:4,texture_data:tt}));rp.file('blocks.json',J(bj));}
       rp.file('animations/wb.animation.json',J(walkAnims()));
       if(Object.keys(sd).length){rp.file('sounds/sound_definitions.json',J({format_version:'1.14.0',sound_definitions:sd}));rp.file('sounds.json',J({entity_sounds:{entities:es}}));}
       const lt=lang.join('\n')+'\n';rp.file('texts/de_DE.lang',lt);rp.file('texts/en_US.lang',lt);rp.file('texts/languages.json',J(['de_DE','en_US']));
       const bp=zip.folder(nm+' Verhalten');
-      bp.file('manifest.json',J({format_version:2,header:{name:nm+' Verhalten',description:'Neue Items und Tiere aus der PixelWerkstatt',uuid:state.ids.bp,version:v,min_engine_version:[1,21,40]},modules:[{type:'data',uuid:state.ids.bpm,version:v}],dependencies:[{uuid:state.ids.rp,version:v}]}));
+      const bpMan={format_version:2,header:{name:nm+' Verhalten',description:'Neue Items, Tiere und Deko aus der PixelWerkstatt',uuid:state.ids.bp,version:v,min_engine_version:[1,21,40]},modules:[{type:'data',uuid:state.ids.bpm,version:v}],dependencies:[{uuid:state.ids.rp,version:v}]};
+      if(flieger.length){bpMan.modules.push({type:'script',language:'javascript',uuid:state.ids.bps,version:v,entry:'scripts/main.js'});bpMan.dependencies.push({module_name:'@minecraft/server',version:SCRIPT_API});
+        bp.file('scripts/main.js',flyScript(flieger.map(k=>'wb:'+k)));}
+      bp.file('manifest.json',J(bpMan));
       bp.file('pack_icon.png',icon);
       for(const k of items){bp.file(`items/wb_${k}.json`,J(itemJson(k)));if(RECIPES[k])bp.file(`recipes/wb_${k}.json`,J(RECIPES[k]));}
       if(items.includes('flinte')||items.includes('patrone'))bp.file('entities/wb_schrot.json',J(schrotBP()));
+      for(const k of wuerfe)bp.file(`entities/wb_${k}_wurf.json`,J(wurfBP(k)));
+      for(const k of deko)bp.file(`blocks/wb_${k}.json`,J(blockJson(k)));
       for(const k of mobs){bp.file(`entities/wb_${k}.json`,J(bpEntity(k,sel)));if(MOBS[k].biomes.length)bp.file(`spawn_rules/wb_${k}.json`,J(spawnRule(k)));const l=lootFor(k,sel);
         if(l)bp.file(`loot_tables/wb/${k}.json`,J({pools:[{rolls:1,entries:[{type:'item',name:l,weight:1,functions:[{function:'set_count',count:{min:0,max:2}}]}]}]}));}
     }
