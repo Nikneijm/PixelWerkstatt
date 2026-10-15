@@ -368,6 +368,17 @@ const MOBS={
       {name:'leg2',parent:'body',pivot:[-1.5,1,2.5],cubes:[{origin:[-2,0,2],size:[1,1,1],part:'fell'}]},
       {name:'leg3',parent:'body',pivot:[1.5,1,2.5],cubes:[{origin:[1,0,2],size:[1,1,1],part:'fell'}]},
       {name:'tail',parent:'body',pivot:[0,2,3],cubes:[{origin:[-0.5,2,3],size:[1,0,7],part:'schwanz'}]}]},
+  /* Rollkoffer: kein Tier, sondern ein Mob ohne eigene KI (roll:true). Er rollt, wenn man ihn schiebt oder an der Leine (Lead) zieht,
+     und hat ein Inventar wie die Lore mit Truhe (27 Slots). Nur per Spawn Egg, keine Spawn Rule. Steht im Tab „Deko“. */
+  rollkoffer:{name:'Rollkoffer',texW:64,roll:true,health:10,speed:0.2,box:[0.7,1.0],biomes:[],weight:1,herd:[1,1],loot:null,
+    parts:{koffer:['Koffer','#d0452f'],kanten:['Kanten','#8f2a1c'],griff:['Griff','#2b2b2b'],rollen:['Rollen','#1c1c1c']},
+    bones:[
+      {name:'body',pivot:[0,2,0],cubes:[{origin:[-5,2,-3],size:[10,13,6],part:'koffer',faces:{up:'kanten',down:'kanten'}},{origin:[-5.5,7,-3.5],size:[11,1,7],part:'kanten'},
+        {origin:[-3,15,1],size:[1,5,1],part:'griff'},{origin:[2,15,1],size:[1,5,1],part:'griff'},{origin:[-3,20,1],size:[6,1,1],part:'griff'}]},
+      {name:'wheel0',parent:'body',pivot:[-4,1,-2],cubes:[{origin:[-4.5,0,-3],size:[1,2,2],part:'rollen'}]},
+      {name:'wheel1',parent:'body',pivot:[4,1,-2],cubes:[{origin:[3.5,0,-3],size:[1,2,2],part:'rollen'}]},
+      {name:'wheel2',parent:'body',pivot:[-4,1,2],cubes:[{origin:[-4.5,0,1],size:[1,2,2],part:'rollen'}]},
+      {name:'wheel3',parent:'body',pivot:[4,1,2],cubes:[{origin:[3.5,0,1],size:[1,2,2],part:'rollen'}]}]},
 };
 /* ---------------- Eigene Tiere: Bauformen ---------------- */
 /* Kopie der eingebauten Mobs vor dem UV-Layout, damit eigene Tiere eine frische Geometrie bekommen. */
@@ -523,7 +534,7 @@ function colorize(px,hex){const[th,ts,tl]=rgb2hsl(...hex2rgb(hex));const ls=px.f
   const avg=ls.reduce((a,b)=>a+b,0)/ls.length;return px.map(v=>{if(!v)return v;const l=rgb2hsl(...hex2rgb(v))[2];return hsl2hex(th,ts,Math.max(.02,Math.min(.98,tl+(l-avg))));});}
 
 const FACE_DE={north:'vorne',south:'hinten',east:'Seite',west:'Seite',up:'oben',down:'unten'};
-const BONE_DE={body:'Körper',head:'Kopf',wing_l:'Flügel',wing_r:'Flügel',tail:'Schwanz',leg0:'Bein',leg1:'Bein',leg2:'Bein',leg3:'Bein',trunk:'Rüssel',ear_l:'Ohr',ear_r:'Ohr',arm_l:'Arm',arm_r:'Arm'};
+const BONE_DE={body:'Körper',head:'Kopf',wing_l:'Flügel',wing_r:'Flügel',tail:'Schwanz',leg0:'Bein',leg1:'Bein',leg2:'Bein',leg3:'Bein',trunk:'Rüssel',ear_l:'Ohr',ear_r:'Ohr',arm_l:'Arm',arm_r:'Arm',wheel0:'Rolle',wheel1:'Rolle',wheel2:'Rolle',wheel3:'Rolle'};
 /* Fertige Looks für die ganze Anzeige: Farben für Herzen, Rüstung, Hunger, XP-Leiste [Balken, leer, Zahl] und Hotbar-Vorlage */
 const LOOKS={
   Diamant:{herz:'#35c9f0',ruestung:'#7fe0e6',hunger:'#f2b33a',xp:['#3fd0ff','#123844','#7fe8ff'],hotbar:'Diamant'},
@@ -728,7 +739,8 @@ function animMob(key,groups,t){const m=MODEL(key);
   if(m.walk==='vier'){const a=Math.sin(t*4)*.45;groups.leg0.rotation.x=a;groups.leg3.rotation.x=a;groups.leg1.rotation.x=-a;groups.leg2.rotation.x=-a;if(groups.trunk)groups.trunk.rotation.x=Math.sin(t*1.6)*.12;if(groups.ear_l){groups.ear_l.rotation.y=Math.sin(t*2)*.18;groups.ear_r.rotation.y=-Math.sin(t*2)*.18;}}
   if(m.wiggle)for(const w of m.wiggle){const g=groups[w.bone];if(!g)continue;const v=Math.sin(t*w.speed+(w.phase||0)*Math.PI/180)*w.deg*Math.PI/180;if(w.axis===0)g.rotation.x=v;else if(w.axis===1)g.rotation.y=v;else g.rotation.z=v;}
   if(m.walk==='zwei'||m.walk==='beine'){const a=Math.sin(t*5)*.5;groups.leg0.rotation.x=a;groups.leg1.rotation.x=-a;if(groups.arm_r){groups.arm_r.rotation.x=a;groups.arm_l.rotation.x=-a;}}
-  if(m.flap){const a=Math.sin(t*m.flap.rad)*m.flap.deg*Math.PI/180;groups.wing_l.rotation.z=a;groups.wing_r.rotation.z=-a;}}
+  if(m.flap){const a=Math.sin(t*m.flap.rad)*m.flap.deg*Math.PI/180;groups.wing_l.rotation.z=a;groups.wing_r.rotation.z=-a;}
+  if(m.roll)for(const w of['wheel0','wheel1','wheel2','wheel3'])if(groups[w])groups[w].rotation.x=-t*4;}
 function p3Loop(ts){if(!P3.host){P3.raf=null;return;}const cw=P3.host.clientWidth,ch=P3.host.clientHeight;
   if(cw&&ch&&(P3._w!==cw||P3._h!==ch)){P3._w=cw;P3._h=ch;P3.r.setSize(cw,ch,false);P3.cam.aspect=cw/ch;P3.cam.updateProjectionMatrix();}
   const t=ts/1000;if(P3.auto)P3.yaw+=.006;if(P3.mob&&P3.groups&&!P3.paused)animMob(P3.mob,P3.groups,t);
@@ -870,7 +882,7 @@ function render(){const M=$('#main');
   if(tab==='deko')renderDeko(M);
   if(tab==='tiere'){
     M.innerHTML=`<section class="panel"><div class="group"><h2>Tiere</h2><p class="lead">Die Tiere tauchen in passenden Gegenden von selbst auf und es gibt sie als Spawn-Ei. Alle sind friedlich. Den Elefanten zähmst du mit Weizen, Äpfeln oder Bananen, den Drachen mit Fleisch oder Fisch. Danach kann man sie reiten. Den Drachen gibt es nur als Spawn-Ei, und auf ihm fliegst du: Wohin du schaust, dorthin fliegt er, Springen lässt ihn steigen.</p>
-      <div class="grid">${BUILTIN_MOBS.map(mobTile).join('')}</div></div>
+      <div class="grid">${BUILTIN_MOBS.filter(k=>!MOBS[k].roll).map(mobTile).join('')}</div></div>
       <div class="group"><h2>Eigene Tiere</h2><p class="lead">Erfinde ein eigenes Tier: Wähle eine Bauform wie Fisch, Qualle, Vogel oder Reittier, gib ihm einen Namen und bemale es.</p>
       <div class="grid">${Object.keys(state.mobs).filter(k=>state.mobs[k].custom&&MOBS[k]).map(mobTile).join('')}${newTile('new-mob','Neues Tier')}</div></div></section>`;}
   if(tab==='bloecke')renderBloecke(M);
@@ -897,8 +909,8 @@ function renderItemTab(M,cat){const E=cat==='essen';
 function dekoTile(k){return tile('deko-'+k,thumbCache['d:'+k]||(thumbCache['d:'+k]=mobThumb(k)||spriteURL(new Array(256).fill(Object.values(state.deko[k].colors)[0]),16)),dekoName(k),state.deko[k].on);}
 function renderDeko(M){const own=Object.keys(state.deko).filter(k=>state.deko[k].custom&&DEKO[k]);
   const hold=Object.keys(state.items).filter(k=>state.items[k].custom&&ITEMS[k]&&itemCat(k)==='deko');
-  M.innerHTML=`<section class="panel"><div class="group"><h2>Deko</h2><p class="lead">Dinge zum Hinstellen. Sie drehen sich beim Hinstellen zu dir. Computer und Laptop leuchten ein bisschen. Den Laptop kannst du zum Beispiel auf den Tisch stellen.</p>
-      <div class="grid">${BUILTIN_DEKO.map(dekoTile).join('')}</div></div>
+  M.innerHTML=`<section class="panel"><div class="group"><h2>Deko</h2><p class="lead">Dinge zum Hinstellen. Sie drehen sich beim Hinstellen zu dir. Computer und Laptop leuchten ein bisschen. Den Laptop kannst du zum Beispiel auf den Tisch stellen. Den Rollkoffer gibt es als Spawn-Ei: Schieb ihn an, nimm ihn an die Leine oder tippe ihn an und pack Sachen hinein.</p>
+      <div class="grid">${BUILTIN_DEKO.map(dekoTile).join('')}${BUILTIN_MOBS.filter(k=>MOBS[k].roll).map(mobTile).join('')}</div></div>
     <div class="group"><h2>Eigene Deko</h2><p class="lead">Erfinde ein eigenes Deko-Teil: Grundform wählen, Namen geben und bemalen.</p>
       <div class="grid">${own.map(dekoTile).join('')}${newTile('new-deko','Neues Deko-Teil')}</div></div>
     ${hold.length?`<div class="group"><h2>Gegenstände zum Halten</h2><p class="lead">Deine früheren Gegenstände. Man hält sie in der Hand, hinstellen geht nicht.</p><div class="grid">${hold.map(itemTile).join('')}</div></div>`:''}</section>`;}
@@ -908,7 +920,7 @@ function applyLook(n){const l=LOOKS[n],h=state.hud;h.heart.px=recolorIcon(h.hear
   [h.xp.voll,h.xp.leer,h.xp.zahl]=l.xp;h.xp.preset=n;const hb=HOTBAR_PRESETS[l.hotbar];if(hb){[h.hotbar.rahmen,h.hotbar.feld,h.hotbar.auswahl]=hb;h.hotbar.preset=l.hotbar;}}
 function selSummary(x){const p=[];const h=HUD_KEYS.filter(k=>x.hud[k]).length;
   const n=(z,a,b)=>z+' '+(z===1?a:b);
-  if(h)p.push(n(h,'Anzeige','Anzeigen'));if(x.items.length)p.push(n(x.items.length,'Item','Items'));if(x.overrides.length)p.push(n(x.overrides.length,'umgestaltetes Item','umgestaltete Items'));if(x.mobs.length)p.push(n(x.mobs.length,'Tier','Tiere'));if(x.deko.length)p.push(n(x.deko.length,'Deko-Teil','Deko-Teile'));if(x.blocks)p.push(n(x.blocks,'Block','Blöcke'));
+  if(h)p.push(n(h,'Anzeige','Anzeigen'));if(x.items.length)p.push(n(x.items.length,'Item','Items'));if(x.overrides.length)p.push(n(x.overrides.length,'umgestaltetes Item','umgestaltete Items'));const ti=x.mobs.filter(k=>!MOBS[k].roll).length,dk=x.deko.length+x.mobs.length-ti;if(ti)p.push(n(ti,'Tier','Tiere'));if(dk)p.push(n(dk,'Deko-Teil','Deko-Teile'));if(x.blocks)p.push(n(x.blocks,'Block','Blöcke'));
   return p.join(' · ')||'noch nichts';}
 function renderPaket(M){const sm=selection('markiert'),sa=selection('alle');
   M.innerHTML=`<section class="panel">
@@ -1134,8 +1146,8 @@ function editMob(B,key){const m=MOBS[key],s=state.mobs[key];layoutMob(m);
       <p class="status" style="margin:0">Bauform: ${esc(FORMS[s.custom.form]?FORMS[s.custom.form].label:'')}</p>`:''}
       <div><h3>Farben</h3><div class="parts" id="parts">${Object.entries(m.parts).map(([p,[lab]])=>`<label class="part"><input type="color" data-part="${p}" value="${s.colors[p]}">${esc(lab)}</label>`).join('')}</div></div>
       <div class="row"><button class="btn small" id="rnd">Zufallsfarben</button><button class="btn small" id="std">Standardfarben</button></div></div>
-    <div class="card" style="display:grid;gap:10px"><h3>Geräusche</h3><p class="status" style="margin:0">Tippe auf <b>Aufnehmen</b> und mach das Geräusch. Nach 4 Sekunden hört die Aufnahme von selbst auf, oder du tippst vorher auf <b>Stopp</b>. Stille am Anfang wird abgeschnitten, ins Spiel kommen höchstens 3 Sekunden. Beim ersten Mal fragt das Tablet, ob die Seite das Mikrofon benutzen darf.</p>
-      ${soundRow('ruf','Ruf','Macht das Tier ab und zu von selbst')}${soundRow('aua','Aua','Wenn das Tier getroffen wird')}</div></div>
+    ${m.roll?'':`<div class="card" style="display:grid;gap:10px"><h3>Geräusche</h3><p class="status" style="margin:0">Tippe auf <b>Aufnehmen</b> und mach das Geräusch. Nach 4 Sekunden hört die Aufnahme von selbst auf, oder du tippst vorher auf <b>Stopp</b>. Stille am Anfang wird abgeschnitten, ins Spiel kommen höchstens 3 Sekunden. Beim ersten Mal fragt das Tablet, ob die Seite das Mikrofon benutzen darf.</p>
+      ${soundRow('ruf','Ruf','Macht das Tier ab und zu von selbst')}${soundRow('aua','Aua','Wenn das Tier getroffen wird')}</div>`}</div>
     <div class="col card" id="pe"></div>`;
   let atlas=mobAtlas(key);let atlasCv=pxCanvas(atlas.px,atlas.texW,atlas.texH);
   p3Mount($('#pv',B));p3ShowMob(key,atlasCv);
@@ -1143,7 +1155,7 @@ function editMob(B,key){const m=MOBS[key],s=state.mobs[key];layoutMob(m);
   const describe=(x,y)=>{const o=atlas.owner[y*atlas.texW+x];return o?`${BONE_DE[o.bone]||o.bone} · ${FACE_DE[o.face]} · ${m.parts[o.part]?m.parts[o.part][0]:''}`:'';};
   function refreshTex(){const g=atlasCv.getContext('2d');g.clearRect(0,0,atlasCv.width,atlasCv.height);g.drawImage(pxCanvas(atlas.px,atlas.texW,atlas.texH),0,0);if(P3.tex)P3.tex.needsUpdate=true;}
   const pe=PixelEditor($('#pe',B),{w:atlas.texW,h:atlas.texH,px:atlas.px,big:true,cell:atlas.texW>64?5:8,regions,describe,
-    hint:'Das ist die Haut des Tieres, aufgeklappt wie ein Bastelbogen. Fahre über ein Feld, um zu sehen, welcher Teil es ist.',
+    hint:m.roll?'Das ist die Oberfläche des Koffers, aufgeklappt wie ein Bastelbogen. Fahre über ein Feld, um zu sehen, welcher Teil es ist.':'Das ist die Haut des Tieres, aufgeklappt wie ein Bastelbogen. Fahre über ein Feld, um zu sehen, welcher Teil es ist.',
     onChange:(px,f)=>{atlas.px=px;refreshTex();if(f){const base=generateMob(key,s.colors).px;const ed={};for(let i=0;i<px.length;i++)if(px[i]!==base[i])ed[i]=px[i];s.edits=ed;delete thumbCache[key];save();}}});
   function recolor(){atlas=mobAtlas(key);pe.set(atlas.px);refreshTex();delete thumbCache[key];save();}
   $('#parts',B).oninput=e=>{const p=e.target.dataset.part;if(!p)return;s.colors[p]=e.target.value;recolor();};
@@ -1253,6 +1265,8 @@ function walkAnims(){return{format_version:'1.8.0',animations:{
   'animation.wb.vier':{loop:true,bones:{leg0:{rotation:['math.cos(query.anim_time*38.17)*30',0,0]},leg3:{rotation:['math.cos(query.anim_time*38.17)*30',0,0]},leg1:{rotation:['-math.cos(query.anim_time*38.17)*30',0,0]},leg2:{rotation:['-math.cos(query.anim_time*38.17)*30',0,0]}}},
   'animation.wb.zwei':{loop:true,bones:{leg0:{rotation:['math.cos(query.anim_time*38.17)*35',0,0]},arm_r:{rotation:['math.cos(query.anim_time*38.17)*35',0,0]},leg1:{rotation:['-math.cos(query.anim_time*38.17)*35',0,0]},arm_l:{rotation:['-math.cos(query.anim_time*38.17)*35',0,0]}}},
   'animation.wb.beine':{loop:true,bones:{leg0:{rotation:['math.cos(query.anim_time*38.17)*35',0,0]},leg1:{rotation:['-math.cos(query.anim_time*38.17)*35',0,0]}}},
+  /* Rollkoffer: Räder drehen sich mit der zurückgelegten Strecke (Radius 1 px) */
+  'animation.wb.rollen':{loop:true,bones:Object.fromEntries(['wheel0','wheel1','wheel2','wheel3'].map(b=>[b,{rotation:['-query.modified_distance_moved*900',0,0]}]))},
   'animation.wb.elefant_ruhe':{loop:true,bones:{trunk:{rotation:['math.sin(query.life_time*90)*7',0,0]},ear_l:{rotation:[0,'math.sin(query.life_time*115)*10',0]},ear_r:{rotation:[0,'-math.sin(query.life_time*115)*10',0]}}},
   ...Object.fromEntries(Object.entries(MOBS).filter(([,m])=>m.flap).map(([k,m])=>{const sp=Math.round(m.flap.rad*57.3);return['animation.wb.flattern_'+k,{loop:true,bones:{wing_l:{rotation:[0,0,`math.sin(query.life_time*${sp})*${m.flap.deg}`]},wing_r:{rotation:[0,0,`-math.sin(query.life_time*${sp})*${m.flap.deg}`]}}}];})),
   /* Wackeln (Schwanzflosse, Tentakel) für Schwimm-Formen */
@@ -1266,6 +1280,7 @@ function clientEntity(key){const m=MOBS[key],s=state.mobs[key];const cols=Object
   if(m.walk==='zwei'){anims.laufen='animation.wb.zwei';scr.push({laufen:'query.modified_move_speed'});}
   if(m.walk==='beine'){anims.laufen='animation.wb.beine';scr.push({laufen:'query.modified_move_speed'});}
   if(m.flap){anims.flattern='animation.wb.flattern_'+key;scr.push('flattern');}
+  if(m.roll){anims.rollen='animation.wb.rollen';scr.push('rollen');}
   return{format_version:'1.10.0','minecraft:client_entity':{description:{identifier:'wb:'+key,materials:{default:'entity_alphatest'},textures:{default:'textures/entity/wb/'+key},geometry:{default:'geometry.wb_'+key},
     render_controllers:['controller.render.default'],animations:anims,scripts:{animate:scr},spawn_egg:{base_color:cols[0],overlay_color:cols[1]||cols[0]}}}};}
 function bpEntity(key,sel){const m=MOBS[key];const C={
@@ -1284,6 +1299,13 @@ function bpEntity(key,sel){const m=MOBS[key];const C={
       'minecraft:navigation.generic':{is_amphibious:false,can_path_over_water:false,can_swim:true,can_walk:false,can_breach:false,can_sink:false},
       'minecraft:underwater_movement':{value:m.speed},'minecraft:movement.sway':{sway_amplitude:0},
       'minecraft:behavior.random_swim':{priority:3,speed_multiplier:1,interval:0,xz_dist:16,y_dist:4},'minecraft:behavior.swim_idle':{priority:5},'minecraft:behavior.swim_wander':{priority:4,interval:0.1,look_ahead:2}});}
+  else if(m.roll){/* Rollkoffer: läuft nicht von selbst, rollt beim Schieben (pushable) und an der Leine. Inventar wie die Lore mit Truhe,
+       Antippen öffnet es, mit Leine in der Hand wird angeleint. Beim Zerstören fällt der Inhalt heraus. */
+    for(const c of['minecraft:jump.static','minecraft:behavior.panic','minecraft:behavior.look_at_player','minecraft:behavior.random_look_around','minecraft:ambient_sound_interval'])delete C[c];
+    Object.assign(C,{'minecraft:type_family':{family:['wb_koffer','inanimate']},'minecraft:breathable':{total_supply:15,suffocate_time:0,breathes_water:true},
+      'minecraft:leashable':{soft_distance:2,hard_distance:4,max_distance:10},
+      'minecraft:inventory':{container_type:'minecart_chest',inventory_size:27},
+      'minecraft:damage_sensor':{triggers:[{cause:'fall',deals_damage:false},{cause:'drowning',deals_damage:false}]}});}
   else Object.assign(C,{[m.hop?'minecraft:movement.skip':'minecraft:movement.basic']:{},'minecraft:navigation.walk':{can_path_over_water:true,avoid_water:true,avoid_damage_blocks:true},'minecraft:behavior.random_stroll':{priority:6,speed_multiplier:1.0}});
   const ent={description:{identifier:'wb:'+key,is_spawnable:true,is_summonable:true,is_experimental:false},components:C};
   if(m.ride&&m.fly)C['minecraft:physics']={has_gravity:false};
