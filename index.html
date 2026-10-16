@@ -335,9 +335,9 @@ const OV_NEU=[
   ['quartz','Quarz','material','edelstein','#ece6dc'],['amethyst_shard','Amethystsplitter','material','edelstein','#9a6fd6'],['coal','Kohle','material','brocken','#2e2e30'],['charcoal','Holzkohle','material','brocken','#3d3530'],
   ['flint','Feuerstein','material','brocken','#5a5c60'],['clay_ball','Tonklumpen','material','brocken','#a2a9b8'],['slimeball','Schleimball','material','kugel','#7ec850'],['ender_pearl','Enderperle','material','kugel','#1f6b5c'],
   ['snowball','Schneeball','material','kugel','#f2f6fa'],['egg','Ei','material','kugel','#e9dcc0'],['gold_nugget','Goldklumpen','material','klumpen','#f2c230'],['iron_nugget','Eisenklumpen','material','klumpen','#d4d6da'],
-  ['redstone','Redstone','material','pulver','#d32a1e'],['gunpowder','Schwarzpulver','material','pulver','#55575c'],['sugar','Zucker','material','pulver','#f2f2f2'],['glowstone_dust','Glowstone-Staub','material','pulver','#f5c542'],
+  ['redstone_dust','Redstone','material','pulver','#d32a1e','redstone'],['gunpowder','Schwarzpulver','material','pulver','#55575c'],['sugar','Zucker','material','pulver','#f2f2f2'],['glowstone_dust','Glowstone-Staub','material','pulver','#f5c542'],
   ['blaze_powder','Lohenstaub','material','pulver','#f09a1e'],['blaze_rod','Lohenrute','material','stab','#f09a1e'],['bone','Knochen','material','stab','#ece6d4'],['feather','Feder','material','stab','#f2f2f2'],
-  ['string','Faden','material','stab','#e6e6e6'],['leather','Leder','material','blatt','#a0653a'],['paper','Papier','material','blatt','#f0ead8'],['book','Buch','material','blatt','#7a4a28'],
+  ['string','Faden','material','stab','#e6e6e6'],['leather','Leder','material','blatt','#a0653a'],['paper','Papier','material','blatt','#f0ead8'],['book_normal','Buch','material','blatt','#7a4a28','book'],
   ['wheat','Weizen','material','stab','#d9b44a'],
 ];
 for(const[file,label,cat,shape,col,id]of OV_NEU)OVERRIDES.push({file,label,cat,shape,col,...(id?{id:'minecraft:'+id}:{})});
@@ -1272,13 +1272,16 @@ function editHotbar(B){const c=state.hud.hotbar;
    aussieht (hand, 16×16). Solange hand fehlt, sieht es in der Hand aus wie im Inventar. Im Paket wird daraus ein Attachable (handRP). */
 const handLook=o=>Array.isArray(o.hand)&&o.hand.length===256?o.hand:o.px;
 const handPx=o=>Array.isArray(o.hand)&&o.hand.length===256&&o.hand.join()!==o.px.join()?o.hand:null;
+/* Rüstung und Wurf-Items: kein Attachable mit Vanilla-Kennung (sonst ersetzt es die Rüstung am Körper bzw. das Wurfobjekt), nur das Inventar-Symbol */
+const OV_NOHAND=new Set(['snowball','egg','ender_pearl']);
+const ovNoHand=o=>!!o&&(o.cat==='ruestung'||OV_NOHAND.has(o.file));
 function zielCard(first,label,mitInfo){return`<div class="card" style="display:grid;gap:10px"><h3>Was malst du?</h3><div class="row" id="ziel">
   <button class="btn" data-z="${first}" aria-pressed="false">${label}</button><button class="btn" data-z="icon" aria-pressed="false">Bild im Inventar</button></div>
   ${mitInfo?'<p class="status" id="ziel-info" style="margin:0"></p><button class="btn small" id="gleich" style="justify-self:start" hidden>Wie im Inventar</button>':''}</div>`;}
 /* Pixel-Editor mit Umschalter „In der Hand“ / „Bild im Inventar“ für 16×16-Items (eigene Items und umgestaltete Vanilla-Items) */
-function spriteZiele(B,o){let ziel='icon',pe=null;
+function spriteZiele(B,o,nohand){let ziel='icon',pe=null;
   const show=px=>p3ShowSprite(px,16);
-  const info=()=>{const t=$('#ziel-info',B),g=$('#gleich',B),eigen=!!handPx(o);
+  const info=()=>{if(nohand)return;const t=$('#ziel-info',B),g=$('#gleich',B),eigen=!!handPx(o);
     if(ziel==='icon')t.textContent=eigen?'So sieht es im Inventar und in der Hotbar aus. In der Hand sieht es anders aus, das malst du unter „In der Hand“.'
       :'So sieht es im Inventar und in der Hotbar aus. Solange du „In der Hand“ nicht extra bemalst, sieht es in der Hand genauso aus.';
     else t.textContent=eigen?'So hältst du es im Spiel in der Hand. Das Bild im Inventar bleibt, wie es ist.'
@@ -1288,9 +1291,9 @@ function spriteZiele(B,o){let ziel='icon',pe=null;
     const px=ziel==='hand'?handLook(o):o.px;show(px);
     pe=PixelEditor($('#pe',B),{w:16,h:16,px,onChange:(p,f)=>{if(ziel==='hand')o.hand=p;else o.px=p;show(p);if(f){save();info();}}});info();};
   mount();
-  $('#ziel',B).onclick=e=>{const b=e.target.closest('[data-z]');if(!b||b.dataset.z===ziel)return;ziel=b.dataset.z;mount();};
+  if(!nohand){$('#ziel',B).onclick=e=>{const b=e.target.closest('[data-z]');if(!b||b.dataset.z===ziel)return;ziel=b.dataset.z;mount();};
   $('#gleich',B).onclick=()=>{if(!confirm('Soll es in der Hand wieder genauso aussehen wie im Inventar? Was du für die Hand gemalt hast, ist dann weg.'))return;
-    delete o.hand;mount();save();toast('In der Hand sieht es jetzt wieder aus wie im Inventar.');};
+    delete o.hand;mount();save();toast('In der Hand sieht es jetzt wieder aus wie im Inventar.');};}
   return{ziel:()=>ziel,load:px=>{if(ziel==='hand')o.hand=px.slice();else o.px=px.slice();pe.set(px);show(px);info();save();}};}
 
 function editItem(B,key){const it=state.items[key],d=ITEMS[key],own=!!it.custom;
@@ -1407,13 +1410,13 @@ function newMob(B){let form='fisch';
     state.mobs[key]={on:true,name,colors:mobColors(def),edits:{},sounds:{},custom:{form,biome:$('#bio',B).value}};
     syncCustoms();save();toast(`„${name}“ ist angelegt und markiert.`);openSheet('mob-'+key);};}
 
-function editOverride(B,file){const o=state.overrides[file];
+function editOverride(B,file){const o=state.overrides[file],nh=ovNoHand(OVERRIDES.find(x=>x.file===file));
   B.innerHTML=`<div class="col">${previewBlock()}<div class="card" style="display:grid;gap:12px">
       ${markSwitch(o.on)}
       <label class="field">Neues Aussehen<select id="tp">${o.tpl?'':'<option value="">Selbst gezeichnete Form</option>'}${tplOptions(TPL16,o.tpl)}</select></label>
 </div></div>
-    <div class="col">${zielCard('hand','In der Hand',true)}<div class="card" id="pe"></div></div>`;
-  p3Mount($('#pv',B));const sz=spriteZiele(B,o);
+    <div class="col">${nh?'<div class="card"><p class="status" style="margin:0">Hier bemalst du das Bild im Inventar und in der Hotbar. Wie es am Körper oder in der Luft aussieht, bleibt wie im Spiel.</p></div>':zielCard('hand','In der Hand',true)}<div class="card" id="pe"></div></div>`;
+  p3Mount($('#pv',B));const sz=spriteZiele(B,o,nh);
   $('#on',B).onchange=e=>{o.on=e.target.checked;save();};
   $('#tp',B).onchange=e=>{if(sz.ziel()==='icon')o.tpl=e.target.value;sz.load(tplPx(e.target.value));};}
 
@@ -1703,7 +1706,9 @@ function selection(mode){const all=mode==='alle';const pick=o=>all||!!(o&&o.on);
   const items=Object.keys(ITEMS).filter(k=>state.items[k]&&pick(state.items[k]));if(items.includes('flinte')&&!items.includes('patrone'))items.push('patrone');
   const mobs=Object.keys(MOBS).filter(k=>state.mobs[k]&&pick(state.mobs[k]));
   const deko=Object.keys(DEKO).filter(k=>state.deko[k]&&pick(state.deko[k]));
-  const overrides=OVERRIDES.map(o=>o.file).filter(f=>pick(state.overrides[f]));
+  /* „Alle Elemente“ nimmt Vanilla-Items nur mit, wenn sie markiert oder verändert sind (Bild weicht vom Startbild ab), sonst würden unveränderte Icons durch Platzhalter ersetzt */
+  const ovChanged=o=>{const s=state.overrides[o.file];return !!s&&(s.on||(Array.isArray(s.px)&&s.px.join()!==ovStartPx(o).join())||(!ovNoHand(o)&&!!handPx(s)));};
+  const overrides=OVERRIDES.filter(o=>all?ovChanged(o):pick(state.overrides[o.file])).map(o=>o.file);
   const hud=Object.fromEntries(HUD_KEYS.map(k=>[k,pick(state.hud[k])]));
   const tex=new Map();
   const addTex=i=>{const p=blkPath(i),px=state.blockTex[p];if(!px)return;tex.set(p,px);if(BLK_TEX[i][2]&4)tex.set(p+'_opaque',px);
@@ -1749,7 +1754,7 @@ async function buildZip(full,mode='alle'){
       await addPng(rp,'textures/ui/hotbar_start_cap.png',capPx(h.hotbar),1,22);await addPng(rp,'textures/ui/hotbar_end_cap.png',capPx(h.hotbar),1,22);await addPng(rp,'textures/ui/selected_hotbar_slot.png',selectedPx(h.hotbar),24,24);}
     for(const f of sel.overrides)await addPng(rp,`textures/items/${f}.png`,state.overrides[f].px,16,16);
     /* Eigenes Aussehen in der Hand (Attachables): umgestaltete Vanilla-Items auch in „Nur Aussehen“, eigene Items nur im Komplettpaket */
-    const haende=[];for(const f of sel.overrides){const hp=handPx(state.overrides[f]);if(hp)haende.push([OV_ID[f]||'minecraft:'+f,'textures/items/wb_hand/'+f,hp]);}
+    const haende=[];for(const f of sel.overrides){const hp=ovNoHand(OVERRIDES.find(x=>x.file===f))?null:handPx(state.overrides[f]);if(hp)haende.push([OV_ID[f]||'minecraft:'+f,'textures/items/wb_hand/'+f,hp]);}
     if(full)for(const k of sel.items){const hp=ITEMS[k].kind!=='wear'&&handPx(state.items[k]);if(hp)haende.push(['wb:'+k,'textures/items/wb/'+k+'_hand',hp]);}
     for(const[id,t,px]of haende){await addPng(rp,t+'.png',px,16,16);rp.file(`attachables/${id.replace(':','_')}_hand.json`,J(handRP(id,t)));}
     if(haende.length){rp.file('models/entity/wb_hand_item.geo.json',J(HAND_GEO));rp.file('animations/wb_hand_item.animation.json',J(HAND_ANIM));}
