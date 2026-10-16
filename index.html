@@ -127,7 +127,9 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--surface);borde
 .grid.klein .name{font-size:13px;max-width:100%;overflow-wrap:anywhere;hyphens:auto}
 .blockfarbe{display:block;width:40px;height:40px;box-shadow:inset 0 0 0 2px rgba(0,0,0,.18),inset 0 0 0 6px rgba(255,255,255,.08)}
 .sk-grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
-@media (min-width:700px){.sk-grid{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start}}
+.sk-left .preview{height:min(56vh,380px)}
+.sk-parts{display:flex;flex-wrap:wrap;gap:8px}
+@media (min-width:700px){.sk-grid{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start}.sk-left{position:sticky;top:8px}}
 .tile.neu{border-style:dashed;color:var(--ink-2)}
 .tile.neu .slot{font-family:var(--font-display);font-size:38px;color:var(--ink-2)}
 .choice{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
@@ -879,8 +881,17 @@ function PixelEditor(host,opts){
   $('#pe-dark',host).onclick=()=>recolor((h,s,l)=>hsl2hex(h,s,Math.max(.03,l-.07)));
   $('#pe-zin',host).onclick=()=>{pe.cell=Math.min(48,pe.cell+2);draw();};
   $('#pe-zout',host).onclick=()=>{pe.cell=Math.max(3,pe.cell-2);draw();};
-  setColor(pe.color);setTool('pen');draw();
-  pe.set=px=>{pe.px=px.slice();draw();swatches();};
+  setColor(pe.color);setTool(opts.tool||'pen');draw();
+  pe.set=(px,clear)=>{pe.px=px.slice();if(clear){pe.undo=[];pe.redo=[];}draw();swatches();};
+  /* Ein Tipp von außen (z. B. aufs 3D-Modell): wirkt wie ein Tipp ins Bild, mit dem gewählten Werkzeug und der gewählten Farbe */
+  pe.tap=(x,y)=>{if(x<0||y<0||x>=pe.w||y>=pe.h||pe.tool==='hand')return false;
+    if(pe.tool==='pick'){const v=pe.px[y*pe.w+x];if(v){setColor(v);setTool('pen');}return true;}
+    if(pe.tool==='swap'&&!pe.px[y*pe.w+x])return false;
+    snapshot();
+    if(pe.tool==='fill')fill(x,y);
+    else if(pe.tool==='swap'){const t=pe.px[y*pe.w+x];for(let i=0;i<pe.px.length;i++)if(pe.px[i]===t)pe.px[i]=pe.color;}
+    else paint(x,y);
+    changed(true);return true;};
   return pe;}
 
 /* ---------------- Ansichten ---------------- */
@@ -931,6 +942,7 @@ function renderBloecke(M){
   draw();$('#bq').oninput=e=>{blkQuery=e.target.value;draw();};}
 const thumbCache={};
 function render(){const M=$('#main');
+  if(P3.kind==='skin'&&tab!=='skins')p3Unmount();
   if(tab==='anzeige'){const hv=document.createElement('canvas');const H=state.hud;
     M.innerHTML=`<section class="panel"><div class="card" style="display:grid;gap:10px"><h3>So sieht deine Anzeige aus</h3><div id="hudp"></div>
         <p class="status" style="margin:0">Herzen, Rüstung, Hunger und XP-Leiste zeigt Minecraft nur im Überlebens- und Abenteuermodus, im Kreativmodus nur die Hotbar.</p></div>
@@ -1699,15 +1711,18 @@ const SK_FSHADE={oben:.1,unten:-.2,rechts:-.06,vorne:0,links:-.06,hinten:-.04};
 function skinFace(b,f){const[u,v,w,h,d]=b;return{oben:[u+d,v,w,d],unten:[u+d+w,v,w,d],rechts:[u,v+d,d,h],vorne:[u+d,v+d,w,h],links:[u+d+w,v+d,d,h],hinten:[u+2*d+w,v+d,w,h]}[f];}
 function skinDefault(){return{name:'Mein Charakter',haut:'#e0ac82',haare:'#5a3a22',augen:'#3a7fd6',frisur:'kurz',
   teile:{shirt:true,jacke:false,hose:true,schuhe:true,muetze:false,brille:false,schal:false,handschuhe:false},
-  farben:{shirt:'#3f8fd6',jacke:'#c94a3a',hose:'#3b4a8c',schuhe:'#5a3a22',muetze:'#e3242b',brille:'#222222',schal:'#f08c2a',handschuhe:'#eeeeee'}};}
+  farben:{shirt:'#3f8fd6',jacke:'#c94a3a',hose:'#3b4a8c',schuhe:'#5a3a22',muetze:'#e3242b',brille:'#222222',schal:'#f08c2a',handschuhe:'#eeeeee'},edits:{}};}
 const skHex=(v,d)=>/^#[0-9a-f]{6}$/i.test(v||'')?v.toLowerCase():d;
 function skinClean(o){const d=skinDefault();o=o&&typeof o==='object'?o:{};
   d.name=cleanName(o.name)||d.name;d.haut=skHex(o.haut,d.haut);d.haare=skHex(o.haare,d.haare);d.augen=skHex(o.augen,d.augen);
   d.frisur=SK_FRISUR[o.frisur]?o.frisur:d.frisur;
   for(const[k]of SK_TEILE){if(o.teile&&typeof o.teile[k]==='boolean')d.teile[k]=o.teile[k];d.farben[k]=skHex(o.farben&&o.farben[k],d.farben[k]);}
+  /* edits: von Hand gemalte Pixel der 64x64-Textur (Index -> '#rrggbb', '' = durchsichtig). Sie liegen über dem, was die Farbwahl zeichnet. */
+  if(o.edits&&typeof o.edits==='object')for(const k of Object.keys(o.edits)){const i=Number(k),v=o.edits[k];
+    if(Number.isInteger(i)&&i>=0&&i<4096&&(v===''||/^#[0-9a-f]{6}$/i.test(v||'')))d.edits[i]=v.toLowerCase();}
   return d;}
-/* Zeichnet den Charakter prozedural auf 64x64 Pixel (Array aus '#rrggbb' oder ''). */
-function skinPixels(s){
+/* Zeichnet den Charakter prozedural auf 64x64 Pixel (Array aus '#rrggbb' oder ''), ohne die von Hand gemalten Pixel. */
+function skinBase(s){
   const px=new Array(4096).fill('');const T=s.teile,F=s.farben,UH='#d9d9d9';
   const P=(name,fn)=>{const b=SK_BOX[name];for(const f of SK_FACES){const[x0,y0,w,h]=skinFace(b,f);
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){const k=(y0+y)*64+x0+x;const c=fn(f,x,y,w,h,k);
@@ -1759,6 +1774,30 @@ function skinPixels(s){
     if(f==='links'&&y===4&&x<=2)return F.brille;
     return'';});
   return px;}
+/* Fertige Textur: Grundbild plus von Hand gemalte Pixel. Daraus entstehen Vorschau, Pack-PNG und Kacheln. */
+function skinPixels(s){const px=skinBase(s),e=s.edits;if(e)for(const k in e){const i=+k;if(i>=0&&i<4096)px[i]=e[k];}return px;}
+/* Pixel-Editor für die Skin-Textur: welche Fläche gehört zu welchem Körperteil (Index in der 64x64-Textur) */
+const SK_PART_DE={kopf:'Kopf',koerper:'Körper',armR:'Arm rechts',armL:'Arm links',beinR:'Bein rechts',beinL:'Bein links'};
+const SK_FACE_DE={oben:'Oben',unten:'Unten',rechts:'Rechts',vorne:'Vorne',links:'Links',hinten:'Hinten'};
+let SK_OWN=null;
+function skinOwner(){if(SK_OWN)return SK_OWN;SK_OWN=new Array(4096).fill(null);
+  for(const n of Object.keys(SK_BOX)){const layer=n.endsWith('2')?1:0,part=layer?n.slice(0,-1):n;
+    for(const f of SK_FACES){const[x0,y0,w,h]=skinFace(SK_BOX[n],f);for(let y=0;y<h;y++)for(let x=0;x<w;x++)SK_OWN[(y0+y)*64+x0+x]={name:n,part,layer,face:f};}}
+  return SK_OWN;}
+/* Ausschnitt der Textur, den ein Körperteil (mit Schicht) belegt: [x,y,Breite,Höhe] */
+function skinRect(name){const[u,v,w,h,d]=SK_BOX[name];return[u,v,2*d+2*w,d+h];}
+/* 3D-Figur aus den Würfeln der Standard-Geometrie (Skin-Layout). Rechter Arm/Bein liegen bei +x, damit sie von vorn links erscheinen wie im Spiel.
+   Die zweite Schicht ist etwas aufgeblasen (inflate), damit sie über der ersten liegt. */
+const SK_3D_ORIGIN={kopf:[-4,24,-4],koerper:[-4,12,-2],armR:[4,12,-2],armL:[-8,12,-2],beinR:[0,0,-2],beinL:[-4,0,-2]};
+function skinBuild3D(texCanvas){
+  const tex=new THREE.CanvasTexture(texCanvas);tex.magFilter=THREE.NearestFilter;tex.minFilter=THREE.NearestFilter;tex.generateMipmaps=false;
+  const mat=new THREE.MeshLambertMaterial({map:tex,transparent:true,alphaTest:.5,side:THREE.DoubleSide});const root=new THREE.Group();
+  for(const n of Object.keys(SK_BOX)){const layer=n.endsWith('2'),part=layer?n.slice(0,-1):n,b=SK_BOX[n],o=SK_3D_ORIGIN[part],size=[b[2],b[3],b[4]];
+    const geo=cubeGeo({origin:o,size,uv:[b[0],b[1]]},64,64);
+    if(layer){const inf=part==='kopf'?.5:.25,c=[o[0]+size[0]/2,o[1]+size[1]/2,o[2]+size[2]/2];
+      geo.translate(-c[0],-c[1],-c[2]);geo.scale((size[0]+2*inf)/size[0],(size[1]+2*inf)/size[1],(size[2]+2*inf)/size[2]);geo.translate(c[0],c[1],c[2]);}
+    root.add(new THREE.Mesh(geo,mat));}
+  return{root,mat};}
 /* Vorschau: vorne und hinten, gezeichnet aus den Flächen der Textur */
 function skinDraw(cv,px,S,views){
   views=views||['vorne','hinten'];const tex=pxCanvas(px,64,64);cv.width=(16*views.length+4*(views.length-1))*S;cv.height=32*S;
@@ -1824,16 +1863,22 @@ function renderSkins(M){
     <div class="group"><h2>Skins</h2><p class="lead">Baue einen eigenen Charakter: Wähle Farben und zieh Kleidung an oder aus. Du kannst damit in Minecraft herumlaufen, mit anderer Kleidung als sonst. Fertige Charaktere gibt es auch zum Herunterladen.</p></div>
     <div class="card" style="display:grid;gap:16px">
       <div class="sk-grid">
-        <div class="col"><div class="card" style="background:var(--surface-2);display:grid;gap:8px;justify-items:center"><canvas id="sk-prev" style="width:100%;max-width:340px;height:auto;image-rendering:pixelated" aria-label="Vorschau deines Charakters, vorne und hinten"></canvas><span class="status">Links von vorn, rechts von hinten</span></div></div>
-        <div class="col">
+        <div class="col sk-left"><div class="card" style="background:var(--surface-2);display:grid;gap:8px;justify-items:center;align-content:start"><div class="preview" id="pv" style="width:100%"><div class="hint">Wische zum Drehen. Tippe auf den Charakter, um zu malen.</div></div><canvas id="sk-prev" hidden style="width:100%;max-width:340px;height:auto;image-rendering:pixelated" aria-label="Vorschau deines Charakters, vorne und hinten"></canvas><span class="status" id="sk-pvtxt">Jede Änderung zeigt sich sofort am Charakter.</span></div></div>
+        <div class="col" style="display:grid;gap:16px">
           <label class="field">Name des Charakters<input type="text" id="sk-name" maxlength="24" value="${esc(SK.cur.name)}"></label>
           ${col('haut','Haut',SK_HAUT)}${col('haare','Haare',SK_HAARE)}${col('augen','Augen')}
           <label class="field">Frisur<select id="sk-frisur">${Object.entries(SK_FRISUR).map(([k,l])=>`<option value="${k}"${SK.cur.frisur===k?' selected':''}>${l}</option>`).join('')}</select></label>
-        </div>
-      </div>
       <div><h3>Anziehen und ausziehen</h3><p class="status" style="margin:0 0 8px">Tippe auf ein Teil, um es an- oder auszuziehen. Daneben stellst du die Farbe ein.</p>
         <div class="parts" id="sk-teile">${SK_TEILE.map(([k,l])=>`<div class="part"><button type="button" class="btn small" data-t="${k}" aria-pressed="${SK.cur.teile[k]}">${l}</button><input type="color" data-f="${k}" value="${SK.cur.farben[k]}" aria-label="Farbe ${l}"></div>`).join('')}</div></div>
       <div class="row"><button class="btn" id="sk-save">Charakter speichern</button><button class="btn" id="sk-rand">Zufällige Farben</button><button class="btn" id="sk-reset">Neu anfangen</button></div>
+      <div id="sk-edit" style="display:grid;gap:10px"><h3>Pixel für Pixel malen</h3>
+        <p class="status" style="margin:0">Male jedes Pixel selbst. Du siehst es sofort am Charakter. Du kannst auch direkt auf den Charakter tippen. „Verschieben“ wählen, wenn du nur drehen willst.</p>
+        <div class="sk-parts" id="sk-vp" role="group" aria-label="Körperteil wählen">${[['alles','Ganzer Bogen'],...Object.entries(SK_PART_DE)].map(([k,l])=>`<button type="button" class="btn small" data-vp="${k}">${l}</button>`).join('')}</div>
+        <div class="sk-parts" id="sk-vl" role="group" aria-label="Schicht wählen"><button type="button" class="btn small" data-vl="0">Körper-Schicht</button><button type="button" class="btn small" data-vl="1">Obendrauf (Jacke, Mütze …)</button></div>
+        <div id="sk-pe"></div>
+        <div class="row"><button class="btn small" id="sk-unedit">Gemalte Pixel zurücknehmen</button></div></div>
+        </div>
+      </div>
     </div>
     <div class="group"><h2>Fertige Charaktere</h2><p class="lead">Lade einen Charakter zum Weiterbauen in die Werkstatt oder lade ihn direkt als Skin Pack herunter.</p>
       <div class="grid" id="sk-fertig">${SK_PRESETS.map((p,i)=>`<div class="card" style="display:grid;gap:8px;justify-items:center;text-align:center"><span class="slot" style="width:76px;height:100px"><img alt="" src="${skThumb(p.s)}" style="width:40px;height:80px"></span><b>${esc(p.n)}</b><button class="btn small" data-load="${i}">Bearbeiten</button><button class="btn small" data-dl="${i}">${DL_ICON}Herunterladen</button></div>`).join('')}</div>
@@ -1849,20 +1894,66 @@ function renderSkins(M){
       <li>In Minecraft: <b>Kleiderschrank</b> (Dressing Room) → <b>Klassische Skins</b> (Classic Skins) → <b>Eigene</b> (Owned) → dein Skin Pack. Wähle den Charakter aus.</li>
       <li>Du kannst jederzeit einen anderen Skin wählen. Auf Servern und im Mehrspielermodus sehen dich andere mit diesem Skin. Die Arme sind die klassischen breiten Arme (Steve-Form).</li></ol></div>
   </section>`;
-  const root=M.firstElementChild;const cv=$('#sk-prev');const draw=()=>{try{skinDraw(cv,skinPixels(SK.cur),8);}catch(e){}};
+  const root=M.firstElementChild;const cv=$('#sk-prev');
+  /* ---- Live-Textur: ein Canvas, das die 3D-Figur als Textur nutzt; Pixel-Editor und Farbwahl schreiben beide hinein ---- */
+  const texCv=document.createElement('canvas');texCv.width=texCv.height=64;
+  let full=skinPixels(SK.cur),pe=null,view={part:'alles',layer:0};
+  const own=skinOwner();
+  const texDraw=()=>{const g=texCv.getContext('2d');g.clearRect(0,0,64,64);g.drawImage(pxCanvas(full,64,64),0,0);
+    if(P3.kind==='skin'&&P3.blockMats)p3BlockUpdate();           /* texture.needsUpdate: die 3D-Figur zeigt es sofort */
+    if(cv&&!cv.hidden){try{skinDraw(cv,full,8);}catch(e){}}};
+  const cropRect=()=>view.part==='alles'?[0,0,64,64]:skinRect(view.part+(view.layer?'2':''));
+  const cropPx=()=>{const[cx,cy,W,H]=cropRect(),a=new Array(W*H);for(let y=0;y<H;y++)for(let x=0;x<W;x++)a[y*W+x]=full[(cy+y)*64+cx+x];return a;};
+  const commitEdits=()=>{const base=skinBase(SK.cur),ed={};for(let i=0;i<4096;i++)if(full[i]!==base[i])ed[i]=full[i];SK.cur.edits=ed;skSave();};
+  const viewUi=()=>{root.querySelectorAll('[data-vp]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.vp===view.part));
+    root.querySelectorAll('[data-vl]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.vl===view.layer));$('#sk-vl').hidden=view.part==='alles';};
+  function buildEditor(){const[cx,cy,W,H]=cropRect();const name=view.part+(view.layer?'2':''),regions=[];
+    for(const n of Object.keys(SK_BOX)){if(view.part!=='alles'&&n!==name)continue;for(const f of SK_FACES){const[x,y,w,h]=skinFace(SK_BOX[n],f);regions.push([x-cx,y-cy,w,h]);}}
+    const host=$('#sk-pe'),prev=pe,sameView=prev&&prev._v===name;
+    pe=PixelEditor(host,{w:W,h:H,px:cropPx(),big:true,regions,color:prev?prev.color:undefined,tool:prev?prev.tool:undefined,
+      cell:sameView?prev.cell:view.part==='alles'?8:Math.max(8,Math.floor(Math.min(440,(host.clientWidth||340)-24)/W)),
+      hint:view.part==='alles'?'Das ist der Charakter, aufgeklappt wie ein Bastelbogen. Wähle oben einen Körperteil, dann wird das Bild größer.':'Das ist ein Teil des Charakters, aufgeklappt. Fahre über ein Feld, um zu sehen, welche Seite es ist.',
+      describe:(x,y)=>{const o=own[(cy+y)*64+cx+x];return o?`${SK_FACE_DE[o.face]} · ${SK_PART_DE[o.part]}${o.layer?' (obendrauf)':''}`:'';},
+      onChange:(px,final)=>{let fix=false;
+        for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=(cy+y)*64+cx+x;if(own[i])full[i]=px[y*W+x];else if(px[y*W+x])fix=true;}   /* Zellen ohne Fläche zählen nicht */
+        texDraw();if(final){commitEdits();if(fix)pe.set(cropPx());}}});
+    pe._v=name;viewUi();}
+  const setView=(part,layer)=>{view={part,layer:layer?1:0};buildEditor();};
+  /* Farbwahl und Kleidung ändern das Grundbild; gemalte Pixel bleiben darüber stehen */
+  const draw=()=>{full=skinPixels(SK.cur);texDraw();if(pe)pe.set(cropPx(),true);};   /* Undo-Verlauf leeren: alte Basisfarben dürfen nicht als Edits zurückkommen */
+  /* 3D-Figur: drehend, mit Tipp zum Malen */
+  const flat=()=>{cv.hidden=false;$('#pv').hidden=true;$('#sk-pvtxt').textContent='Links von vorn, rechts von hinten. Jede Änderung zeigt sich sofort.';draw();};
+  const mount3d=()=>{if(!P3.ok){flat();return;}try{if(!p3Ensure()){flat();return;}
+    p3Mount($('#pv'));p3Clear();const o=skinBuild3D(texCv);P3.obj=o.root;P3.blockMats=[o.mat];P3.scene.add(o.root);P3.kind='skin';
+    P3.center.set(0,16,0);P3.dist=88;P3.yaw=Math.PI+.6;P3.pitch=.15;P3.auto=true;
+    if(!P3._skL){P3._skL=true;let d0=null;
+      P3.canvas.addEventListener('pointerdown',e=>{d0={x:e.clientX,y:e.clientY};});
+      P3.canvas.addEventListener('pointerup',e=>{const d=d0;d0=null;if(d&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<6&&P3.kind==='skin'&&P3.host&&P3.skTap)P3.skTap(e);});}
+    const ray=new THREE.Raycaster(),v=new THREE.Vector2();
+    P3.skTap=e=>{const r=P3.canvas.getBoundingClientRect();v.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(v,P3.cam);
+      const idx=h=>h.uv?Math.min(63,Math.floor((1-h.uv.y)*64))*64+Math.min(63,Math.floor(h.uv.x*64)):-1;
+      const hits=ray.intersectObject(P3.obj,true).filter(h=>idx(h)>=0&&own[idx(h)]);if(!hits.length||!pe)return;
+      const h=hits.find(h=>full[idx(h)])||hits[0],i=idx(h),o=own[i];      /* durchsichtige Stellen der Obendrauf-Schicht überspringen */
+      if(view.part!=='alles'&&(view.part!==o.part||view.layer!==o.layer))setView(o.part,o.layer);
+      const[cx,cy]=cropRect();pe.tap(i%64-cx,((i/64)|0)-cy);};
+    $('#sk-pvtxt').textContent='Du siehst deinen Charakter in 3D. Jede Änderung zeigt sich sofort.';
+    }catch(err){P3.kind=null;P3.host=null;flat();}};
   const listUi=()=>{const L=$('#sk-liste');
     L.innerHTML=SK.liste.length?SK.liste.map((s,i)=>`<div class="tile-w"><button class="tile" data-edit="${i}"><span class="slot"><img alt="" src="${skThumb(s)}" style="width:20px;height:40px"></span><span class="name">${esc(s.name)}</span></button><button class="btn small" data-del="${i}" aria-label="${esc(s.name)} entfernen" style="width:100%;margin-top:4px">Entfernen</button></div>`).join(''):'<p class="status" style="grid-column:1/-1;margin:0">Noch nichts gespeichert.</p>';
     $('#sk-ver').textContent='Version '+(SK.version+1);};
   const inputsFromCur=()=>{root.querySelectorAll('[data-k]').forEach(i=>i.value=SK.cur[i.dataset.k]);root.querySelectorAll('[data-f]').forEach(i=>i.value=SK.cur.farben[i.dataset.f]);
     root.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',SK.cur.teile[b.dataset.t]));$('#sk-name').value=SK.cur.name;$('#sk-frisur').value=SK.cur.frisur;};
   const change=()=>{skSave();draw();};
-  root.oninput=e=>{const t=e.target;
+  root.oninput=e=>{const t=e.target;if(t.closest('#sk-pe'))return;
     if(t.dataset.k){SK.cur[t.dataset.k]=skHex(t.value,SK.cur[t.dataset.k]);change();}
     else if(t.dataset.f){SK.cur.farben[t.dataset.f]=skHex(t.value,SK.cur.farben[t.dataset.f]);SK.cur.teile[t.dataset.f]=true;const b=root.querySelector(`[data-t="${t.dataset.f}"]`);if(b)b.setAttribute('aria-pressed','true');change();}
     else if(t.id==='sk-name'){SK.cur.name=cleanName(t.value)||'Mein Charakter';skSave();}
     else if(t.id==='sk-pname'){SK.packName=cleanName(t.value)||'Meine Charaktere';skSave();}
     else if(t.id==='sk-frisur'){SK.cur.frisur=SK_FRISUR[t.value]?t.value:'kurz';change();}};
-  root.onclick=async e=>{const b=e.target.closest('button');if(!b)return;
+  root.onclick=async e=>{const b=e.target.closest('button');if(!b||b.closest('#sk-pe'))return;
+    if(b.dataset.vp){setView(b.dataset.vp,view.layer);return;}
+    if(b.dataset.vl!==undefined){setView(view.part,+b.dataset.vl);return;}
+    if(b.id==='sk-unedit'){if(!Object.keys(SK.cur.edits).length){toast('Du hast noch keine Pixel gemalt.');return;}SK.cur.edits={};change();toast('Die gemalten Pixel sind weg. Die Farben bleiben.');return;}
     if(b.dataset.c){const k=b.parentElement.dataset.sw;SK.cur[k]=b.dataset.c;inputsFromCur();change();return;}
     if(b.dataset.t){SK.cur.teile[b.dataset.t]=!SK.cur.teile[b.dataset.t];b.setAttribute('aria-pressed',SK.cur.teile[b.dataset.t]);change();return;}
     if(b.dataset.load!==undefined){SK.cur=skinClean(SK_PRESETS[+b.dataset.load].s);inputsFromCur();change();toast('Der Charakter ist in der Werkstatt. Jetzt kannst du ihn ändern.');window.scrollTo({top:0,behavior:'smooth'});return;}
@@ -1880,7 +1971,7 @@ function renderSkins(M){
     if(b.id==='sk-dlall'){await skinDownload(SK_PRESETS.map(p=>p.s),'Fertige Charaktere',SK_ALLE_IDS,[1,0,0],$('#sk-msg'));return;}
     if(b.id==='sk-dl'){const sk=SK.liste.length?SK.liste:[skinClean(SK.cur)];
       if(await skinDownload(sk,SK.packName,SK.ids,[1,0,SK.version+1],$('#sk-msg'))){SK.version++;skSave();$('#sk-ver').textContent='Version '+(SK.version+1);}}};
-  draw();listUi();}
+  viewUi();buildEditor();mount3d();draw();listUi();}
 /*SKINS-END*/
 
 render();
