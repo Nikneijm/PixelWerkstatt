@@ -1707,7 +1707,7 @@ function selection(mode){const all=mode==='alle';const pick=o=>all||!!(o&&o.on);
   const mobs=Object.keys(MOBS).filter(k=>state.mobs[k]&&pick(state.mobs[k]));
   const deko=Object.keys(DEKO).filter(k=>state.deko[k]&&pick(state.deko[k]));
   /* „Alle Elemente“ nimmt Vanilla-Items nur mit, wenn sie markiert oder verändert sind (Bild weicht vom Startbild ab), sonst würden unveränderte Icons durch Platzhalter ersetzt */
-  const ovChanged=o=>{const s=state.overrides[o.file];return !!s&&(s.on||(Array.isArray(s.px)&&s.px.join()!==ovStartPx(o).join())||(!ovNoHand(o)&&!!handPx(s)));};
+  const ovChanged=o=>{const s=state.overrides[o.file];return !!s&&(s.on||!!o.def||(Array.isArray(s.px)&&s.px.join()!==ovStartPx(o).join())||(!ovNoHand(o)&&!!handPx(s)));};
   const overrides=OVERRIDES.filter(o=>all?ovChanged(o):pick(state.overrides[o.file])).map(o=>o.file);
   const hud=Object.fromEntries(HUD_KEYS.map(k=>[k,pick(state.hud[k])]));
   const tex=new Map();
