@@ -563,10 +563,129 @@ function blockPattern(hex,m,seed,hex2){const px=new Array(256);
   if(m==='erz'){const spot=hex2||'#ffffff';for(let k=0;k<5;k++){const cx=1+Math.floor(hashRand(k,seed+11)*13),cy=1+Math.floor(hashRand(k,seed+29)*13);
     for(const[dx,dy]of[[0,0],[1,0],[0,1],[1,1],[-1,0],[0,-1]]){if(hashRand(k*9+dx+dy*3,seed+5)<.25&&(dx||dy))continue;const X=cx+dx,Y=cy+dy;if(X<0||Y<0||X>15||Y>15)continue;px[Y*16+X]=shade(spot,(dx+dy)*.08);}}}
   return px;}
+/* Eigene Blockbilder im Minecraft-Stil: 16×16, prozedural mit festem Seed (Körnung, Maserung, Fugen, Farbstimmung), nichts aus Minecraft abgezeichnet.
+   blkClassic(Pfad, Grundfarbe, Seed) liefert das Startbild; für unbekannte Blöcke null (dann greift blockPattern). */
+const clamp01=v=>v<0?0:v>.999?.999:v;
+const pal5=b=>[-.24,-.12,0,.1,.19].map(a=>shade(b,a));
+const rampPick=(pal,t)=>pal[Math.floor(clamp01(t)*pal.length)];
+/* Kachelbares Rauschen (Zellen cx×cy, Raster umläuft, damit Kanten ohne Naht aneinanderpassen) */
+function vnz(x,y,cx,cy,seed){const nx=16/cx,ny=16/cy,fx=x/cx,fy=y/cy,x0=Math.floor(fx),y0=Math.floor(fy),tx=fx-x0,ty=fy-y0;
+  const g=(a,b)=>hashRand(((a%nx+nx)%nx)+((b%ny+ny)%ny)*32,seed);const sx=tx*tx*(3-2*tx),sy=ty*ty*(3-2*ty);
+  const a=g(x0,y0),b=g(x0+1,y0),c=g(x0,y0+1),d=g(x0+1,y0+1);return a+(b-a)*sx+(c-a)*sy+(a-b-c+d)*sx*sy;}
+/* Zellen (Voronoi, umlaufend) für Steine und Kiesel */
+function voroCells(n,seed){const p=[];for(let k=0;k<n;k++)p.push([hashRand(k,seed+101)*16,hashRand(k,seed+211)*16]);return p;}
+function voroAt(x,y,pts){let b1=1e9,b2=1e9,id=0;pts.forEach((p,k)=>{for(const ox of[-16,0,16])for(const oy of[-16,0,16]){const dx=x+.5-(p[0]+ox),dy=y+.5-(p[1]+oy),d=dx*dx+dy*dy;if(d<b1){b2=b1;b1=d;id=k;}else if(d<b2)b2=d;}});return{id,e:Math.sqrt(b2)-Math.sqrt(b1)};}
+const gen16=f=>{const px=new Array(256);for(let y=0;y<16;y++)for(let x=0;x<16;x++)px[y*16+x]=f(x,y,y*16+x);return px;};
+function texStone(base,s,kontrast){const k=kontrast||1,P=pal5(base);return gen16((x,y,i)=>{const t=.5+((.45*vnz(x,y,4,4,s)+.25*vnz(x,y,2,2,s+7)+.3*hashRand(i,s))-.5)*1.5*k;return rampPick(P,t);});}
+function texCobble(base,s,moos){const P=pal5(base),pts=voroCells(9,s),tone=pts.map((_,k)=>hashRand(k,s+5));
+  return gen16((x,y,i)=>{const v=voroAt(x,y,pts);if(v.e<1.5)return shade(base,-.5+hashRand(i,s)*.06);
+    let c=rampPick(P,.15+tone[v.id]*.7+(hashRand(i,s+2)-.5)*.25);if(v.e<2.6)c=shade(c,-.12);
+    if(moos&&vnz(x,y,4,4,s+9)>.62)c=shade(hsl2hex(.25,.35,.34),(hashRand(i,s+4)-.5)*.3);return c;});}
+function texDirt(base,s,steine){const P=pal5(base);return gen16((x,y,i)=>{let t=.25+.45*hashRand(i,s)+.3*vnz(x,y,2,2,s+3);
+  const n=vnz(x,y,3,3,s+17);if(n>.76)return shade(base,-.3+(hashRand(i,s+8)-.5)*.1);if(steine&&n<.15)return shade(base,.22);if(n<.07)return shade(base,.2);return rampPick(P,t);});}
+function texGrassTop(base,s){const P=pal5(base);return gen16((x,y,i)=>rampPick(P,.15+.5*hashRand(i,s)+.35*vnz(x,y,2,2,s+4)));}
+function texGrassSide(dirt,gras,s){const D=pal5(dirt),G=pal5(gras);return gen16((x,y,i)=>{const d=3+Math.floor(hashRand(x,s+6)*2.6)+(hashRand(x+1,s+6)>.8?1:0);
+  if(y<d)return rampPick(G,.2+.55*hashRand(i,s)+(y===d-1?-.2:0));if(y===d&&hashRand(i,s+9)<.5)return rampPick(G,.1);
+  const n=vnz(x,y,3,3,s+17);if(n>.76)return shade(dirt,-.3);return rampPick(D,.25+.45*hashRand(i,s+1)+.3*vnz(x,y,2,2,s+3));});}
+function texSand(base,s){const P=pal5(base);return gen16((x,y,i)=>rampPick(P,.3+.4*hashRand(i,s)+.3*vnz(x,y,2,2,s+1)-.1));}
+function texGravel(base,s){const pts=voroCells(22,s),P=pal5(base);return gen16((x,y,i)=>{const v=voroAt(x,y,pts);const t=hashRand(v.id,s+3);
+  let c=rampPick(P,.1+t*.8+(hashRand(i,s)-.5)*.12);if(v.e<1.1)c=shade(base,-.38);else if(v.e<2)c=shade(c,-.1);return t>.8&&hashRand(v.id,s+8)>.5?shade(c,0.0):c;});}
+function texPlanks(base,s){const P=[-.26,-.12,0,.09].map(a=>shade(base,a));return gen16((x,y,i)=>{const b=y>>2,ry=y&3;
+  if(ry===3)return shade(base,-.42);const off=(b*5+Math.floor(hashRand(b,s)*8)+3)%16;if(ry<3&&x===off)return shade(base,-.34);
+  const bt=hashRand(b,s+2)*.3;const grain=vnz(x,y,8,1,s+b*13);return rampPick(P,.3+bt+(grain-.5)*.7+(hashRand(i,s)-.5)*.2-(ry===0?-.1:0));});}
+function texBark(base,s){const P=[-.42,-.28,-.14,0,.1].map(a=>shade(base,a));return gen16((x,y,i)=>{const col=hashRand(x,s)*.55+vnz(x,y,1,6,s+2)*.45;
+  let t=col+(hashRand(i,s+1)-.5)*.2;return rampPick(P,t);});}
+function texRings(base,s){const R=[-.3,-.14,0,.1].map(a=>shade(base,a)),bark=shade(base,-.42);return gen16((x,y,i)=>{const dx=Math.abs(x-7.5),dy=Math.abs(y-7.5),m=Math.max(dx,dy);
+  if(m>6.4)return shade(bark,(hashRand(i,s)-.5)*.2);if(m>5.4)return shade(base,-.3+(hashRand(i,s)-.5)*.14);
+  const d=Math.sqrt(dx*dx+dy*dy)*.9+vnz(x,y,4,4,s)*1.6;return R[Math.floor(d)%2===0?(hashRand(i,s+1)<.3?1:2):(hashRand(i,s+1)<.3?3:1)];});}
+function texStoneBrick(base,s,art){const P=pal5(base);return gen16((x,y,i)=>{const row=y>>3,ry=y&7,off=row?4:0;const fx=(x+off)&15,fugeX=fx===7||fx===15;
+  if(ry===7||fugeX&&!(ry===7))return shade(base,-.4+(hashRand(i,s)-.5)*.08);const idx=row*2+(((x+off)&15)>7?1:0);
+  let c=rampPick(P,.2+hashRand(idx,s)*.4+(hashRand(i,s+2)-.5)*.35);if(ry===0||(fx===0||fx===8))c=shade(c,.12);
+  if(art==='moos'&&vnz(x,y,4,4,s+9)>.6)c=shade(hsl2hex(.26,.33,.35),(hashRand(i,s+4)-.5)*.3);
+  if(art==='riss'&&((x+y*2+row*3)%13===0&&hashRand(i,s)>.2||(x*3+y)%17===0&&y>3))c=shade(base,-.45);return c;});}
+function texBrick(base,s){const P=pal5(base);return gen16((x,y,i)=>{const off=((y>>2)&1)*4,ry=y&3;if(ry===3||((x+off)&7)===7)return'#'+['b8b3aa','aaa59c','c2bdb3'][Math.floor(hashRand(i,s)*3)];
+  const idx=(y>>2)*2+((x+off+8>>3)&1);let c=rampPick(P,.28+hashRand(idx,s+3)*.4+(hashRand(i,s)-.5)*.25);if(ry===0)c=shade(c,.08);return c;});}
+function texGlass(base,s){const rahmen=shade(base,.55);return gen16((x,y,i)=>{if(x===0||y===0||x===15||y===15)return(x+y)%3===0?shade(base,.3):rahmen;
+  if((x===2&&y>=2&&y<=5)||(y===2&&x>=3&&x<=6))return'#ffffff';if(((x-y===8)||(x-y===9))&&y>=3&&y<=6&&hashRand(i,s)>.2)return shade(base,.65);return'';});}
+function texNether(base,s){const P=[-.34,-.2,-.07,.05,.17].map(a=>shade(base,a));return gen16((x,y,i)=>{const w=vnz(x,y,4,4,s)*.55+vnz(x,y,2,2,s+5)*.3+hashRand(i,s+1)*.25;return rampPick(P,.5+(w-.5)*1.7);});}
+function texGlow(base,s){const pts=voroCells(14,s),P=[-.4,-.22,0,.17,.34].map(a=>shade(base,a));return gen16((x,y,i)=>{const v=voroAt(x,y,pts);
+  return v.e<1.2?P[0]:rampPick(P,.3+hashRand(v.id,s+2)*.5+(hashRand(i,s)-.5)*.2-(v.e<2.2?.15:0));});}
+function texObsidian(base,s){const P=[-.3,-.1,.15,.45,.8].map(a=>shade(base,a));return gen16((x,y,i)=>{const w=vnz(x,y,4,2,s)*.6+hashRand(i,s+1)*.4;return rampPick(P,Math.pow(w,1.8)*1.1);});}
+function texWool(base,s){const P=[-.16,-.07,0,.07].map(a=>shade(base,a));return gen16((x,y,i)=>rampPick(P,.25+.5*vnz(x,y,2,1,s)+.35*(hashRand(i,s+3)-.3))); }
+function texMetal(base,s){const P=[-.18,-.08,0,.1].map(a=>shade(base,a));return gen16((x,y,i)=>{if(x===0||y===0)return shade(base,.3);if(x===15||y===15)return shade(base,-.3);
+  if(x===1||y===1)return shade(base,.14);if(x===14||y===14)return shade(base,-.18);if((x-y===5||x-y===6)&&y>2&&y<7)return shade(base,.4);return rampPick(P,.35+.4*hashRand(i,s)+.1);});}
+function texSandstone(base,s,teil){const P=pal5(base);return gen16((x,y,i)=>{const n=.3+.4*hashRand(i,s)+.2*vnz(x,y,4,2,s);if(teil==='oben'||teil==='unten')return rampPick(P,n-.05);
+  if(y===0||y===15)return shade(base,-.22);if(y===1||y===14)return shade(base,.1);if(y===4||y===11)return shade(base,-.2+(hashRand(i,s)-.5)*.1);if(y===5||y===12)return shade(base,.08);return rampPick(P,n);});}
+const BUCH=['#8b2a2a','#2f5b8c','#3f7a3a','#c9a43a','#6b3a7a','#a8622a'];
+function texBookshelf(planksBase,s){const PL=texPlanks(planksBase,s);return gen16((x,y,i)=>{if(y<2||(y>=7&&y<=8)||y>13)return PL[i];
+  const reihe=y<7?0:1,b=Math.floor((x+reihe*2)/2.5),ton=BUCH[Math.floor(hashRand(b+reihe*9,s+4)*6)];if(x===0||x===15)return shade(planksBase,-.45);
+  const bx=(x+reihe*2)%5,kante=bx===0;let c=shade(ton,kante?-.35:(hashRand(i,s)-.5)*.14);if(y===2||y===9)c=shade(c,-.3);if((y+reihe)%5===0&&!kante&&hashRand(b,s)>.5)c=shade(c,.25);return c;});}
+function texTntSide(s){const R=pal5('#b0332a'),L=[[0,1,2],[1,1,1],[0,1,2]];const T={T:[1,1,1,0,1,0,0,1,0,0,1,0,0,1,0],N:[1,0,1,1,1,1,1,1,1,1,0,1,1,0,1]};
+  return gen16((x,y,i)=>{if(y>=5&&y<=11){if(y===5||y===11)return'#8c8478';const bx=x-2,by=y-6;if(by<5&&bx>=0&&bx<11){const gl=bx<3?'T':bx<4?'':bx<7?'N':bx<8?'':'T';const lx=bx<3?bx:bx<7?bx-4:bx-8;if(gl&&T[gl][by*3+lx])return'#2a2622';}
+    return shade('#ddd7c8',(hashRand(i,s)-.5)*.1);}
+    const sx=x&3;if(sx===3)return shade('#b0332a',-.5);return rampPick(R,.35+hashRand(x>>2,s)*.2+(hashRand(i,s+2)-.5)*.3+(y===0||y===12?.12:0)-(y===4||y===15?.15:0));});}
+function texTntTop(s){const R=pal5('#9a3a32');return gen16((x,y,i)=>{const dx=Math.abs(x-7.5),dy=Math.abs(y-7.5),m=Math.max(dx,dy);
+  if(m<1.1)return'#1c1816';if(m<2.2)return shade('#6a5a44',(hashRand(i,s)-.5)*.2);if(m>6.4||x===0||y===0)return shade('#9a3a32',-.35);
+  return(x&3)===3?shade('#9a3a32',-.4):rampPick(R,.35+(hashRand(i,s)-.5)*.5);});}
+function texTntBottom(s){const R=pal5('#a74335');return gen16((x,y,i)=>(x&3)===3?shade('#a74335',-.5):rampPick(R,.35+(hashRand(i,s)-.5)*.5));}
+function texOre(stonePx,spot,s){const px=stonePx.slice();const n=5;for(let k=0;k<n;k++){const cx=2+Math.floor(hashRand(k,s+11)*11),cy=2+Math.floor(hashRand(k,s+29)*11);
+  for(const[dx,dy]of[[0,0],[1,0],[0,1],[1,1],[-1,0],[0,-1],[1,-1]]){if(dx*dx+dy*dy>1&&hashRand(k*9+dx*3+dy,s+5)<.4)continue;const X=cx+dx,Y=cy+dy;if(X<0||Y<0||X>15||Y>15)continue;
+    px[Y*16+X]=shade(spot,(hashRand(X+Y*16,s)-.5)*.3+(dy>0||dx>0?-.12:.1));}}return px;}
+function texFurnace(base,s,front){const P=pal5(base);const px=gen16((x,y,i)=>{const t=.2+.5*hashRand(i,s)+.3*vnz(x,y,4,4,s);return(x===0||y===0)?shade(base,.1):(x===15||y===15)?shade(base,-.2):rampPick(P,t);});
+  if(front)for(let y=0;y<16;y++)for(let x=0;x<16;x++){const i=y*16+x;if(x>=3&&x<=12&&y>=3&&y<=9)px[i]=y===3||x===3?'#2a2a2a':'#141414';if(x>=3&&x<=12&&y>=11&&y<=12)px[i]=y===11?'#1a1a1a':'#303030';}
+  return px;}
+function blkClassic(p,hex,seed){const s=seed*7+3;
+  if(p==='stone')return texStone('#7e7e7e',s);
+  if(p==='cobblestone')return texCobble('#807f80',s);
+  if(p==='cobblestone_mossy')return texCobble('#76786a',s,true);
+  if(p==='stone_andesite'||p==='stone_diorite'||p==='stone_granite')return texStone('#'+hex,s,1.25);
+  if(/^stone_(andesite|diorite|granite)_smooth$/.test(p))return texStone('#'+hex,s,.5);
+  if(p==='stonebrick'||p==='stonebrick_carved')return texStoneBrick('#7a7a7a',s);
+  if(p==='stonebrick_mossy')return texStoneBrick('#757b6c',s,'moos');
+  if(p==='stonebrick_cracked')return texStoneBrick('#767676',s,'riss');
+  if(p==='dirt')return texDirt('#866043',s);
+  if(p==='coarse_dirt')return texDirt('#'+hex,s,true);
+  if(p==='mud'||p==='soul_soil'||p==='packed_mud')return texDirt('#'+hex,s);
+  if(p==='grass_top')return texGrassTop('#939393',s);
+  if(p==='grass_side')return texGrassSide('#866043','#9b9b9b',s);
+  if(p==='grass_carried')return texGrassTop('#5d8f35',s);
+  if(p==='sand'||p==='red_sand')return texSand('#'+hex,s);
+  if(p==='gravel')return texGravel('#8f8a89',s);
+  if(p==='brick')return texBrick('#976253',s);
+  if(p==='glass')return texGlass('#b0d6db',s);
+  if(p==='netherrack')return texNether('#622626',s);
+  if(p==='glowstone')return texGlow('#d99f4c',s);
+  if(p==='obsidian')return texObsidian('#1a1230',s);
+  if(p==='bedrock')return texStone('#555555',s,1.6);
+  if(p==='end_stone')return texStone('#'+hex,s,1.1);
+  if(p==='snow')return gen16((x,y,i)=>shade('#f4fafa',(hashRand(i,s)-.7)*.07));
+  if(p==='ice'||p==='ice_packed')return gen16((x,y,i)=>rampPick(pal5('#'+hex),.45+(vnz(x,y,8,8,s)-.5)*.9+(hashRand(i,s)-.5)*.15+(((x+y)%9===0)?.25:0)));
+  if(p==='clay')return gen16((x,y,i)=>rampPick(pal5('#a1a6b3'),.3+.4*hashRand(i,s)+.25*vnz(x,y,4,4,s)));
+  if(p==='tnt_side')return texTntSide(s);
+  if(p==='tnt_top')return texTntTop(s);
+  if(p==='tnt_bottom')return texTntBottom(s);
+  if(p==='bookshelf')return texBookshelf('#a2834f',s);
+  if(/^(iron|gold|diamond|emerald)_block$/.test(p))return texMetal('#'+hex,s);
+  if(/^wool_colored_|^concrete_powder/.test(p))return texWool('#'+hex,s);
+  if(p==='sandstone_normal'||p==='red_sandstone_normal')return texSandstone('#'+hex,s,'seite');
+  if(p==='sandstone_top'||p==='red_sandstone_top')return texSandstone('#'+hex,s,'oben');
+  if(p==='sandstone_bottom'||p==='red_sandstone_bottom')return texSandstone('#'+hex,s,'unten');
+  if(p==='furnace_top'||p==='furnace_side')return texFurnace('#'+hex,s);
+  if(p==='furnace_front_off')return texFurnace('#'+hex,s,true);
+  if(/^(deepslate\/)?deepslate(_top)?$|^tuff$|^basalt_|^smooth_basalt$/.test(p))return texStone('#'+hex,s,.9);
+  if(/^(planks_|pale_oak_planks|bamboo_planks|cherry_planks|mangrove_planks|poplar_planks|huge_fungus\/crimson_planks)/.test(p))return texPlanks('#'+hex,s);
+  if(/^(log_(oak|spruce|birch|jungle|acacia|big_oak)|stripped_[a-z_]+_log|cherry_log_side|mangrove_log_side|pale_oak_log_side|poplar_log_side)$/.test(p)&&!/top/.test(p))return texBark('#'+hex,s);
+  if(/^log_[a-z_]+_top$|^stripped_[a-z_]+_log_top$|_log_top$/.test(p))return texRings('#'+hex,s);
+  if(/_ore$/.test(p)){const nether=/^(nether_gold|quartz)_ore$/.test(p);return texOre(nether?texNether('#622626',s):texStone(/deepslate/.test(p)?'#4f4f52':'#7e7e7e',s,1),oreColor(p),s);}
+  return null;}
 const blkGenCache={};
 function blkPx(i){if(state.blockTex[blkPath(i)])return state.blockTex[blkPath(i)];if(blkGenCache[i])return blkGenCache[i];
-  const p=blkPath(i),m=guessMuster(p);let base='#'+BLK_TEX[i][1];if(m==='erz'){const[h,s,l]=rgb2hsl(...hex2rgb(base));base=hsl2hex(h,s*.25,l);}
+  const p=blkPath(i),m=guessMuster(p);let base='#'+BLK_TEX[i][1];const cl=blkClassic(p,BLK_TEX[i][1],i);if(cl)return blkGenCache[i]=cl;
+  if(m==='erz'){const[h,s,l]=rgb2hsl(...hex2rgb(base));base=hsl2hex(h,s*.25,l);}
   return blkGenCache[i]=blockPattern(base,m,i,m==='erz'?oreColor(p):undefined);}
+/* Kachelbild für unveränderte Blöcke: das Startmuster, grau gehaltene Teile (Gras, Laub) grün eingefärbt wie im Spiel */
+function blkThumb(i){const px=blkPx(i);if(!(BLK_TEX[i][2]&1)||state.blockTex[blkPath(i)])return px;
+  return px.map(v=>{if(!v)return v;const[,sa]=rgb2hsl(...hex2rgb(v));return sa<.12?mixHex(v,'#5d9e3a'):v;});}
 /* Farbe a mit Farbe b multiplizieren (so färbt das Spiel graue Gras- und Laubbilder ein) */
 function mixHex(a,b){const x=hex2rgb(a),y=hex2rgb(b);return rgb2hex(x[0]*y[0]/255*1.6,x[1]*y[1]/255*1.6,x[2]*y[2]/255*1.6);}
 function avgHex(px){let r=0,g=0,b=0,n=0;for(const v of px){if(!v)continue;const c=hex2rgb(v);r+=c[0];g+=c[1];b+=c[2];n++;}return n?rgb2hex(r/n,g/n,b/n):'#808080';}
@@ -924,8 +1043,8 @@ function newTile(id,name){return`<button class="tile neu" data-open="${id}"><spa
 function mobTile(k){const s=state.mobs[k];const has=Object.keys(s.sounds||{}).length;return tile('mob-'+k,thumbCache[k]||(thumbCache[k]=mobThumb(k)||spriteURL(new Array(256).fill(s.colors[Object.keys(s.colors)[0]]),16)),mobName(k)+(has?' ♪':''),s.on);}
 const mobName=k=>(state.mobs[k]&&state.mobs[k].name)||MOBS[k].name;
 function blkTile(b){const i=blkFace(b,'S');const ed=blkEdited(b);const on=!!(state.blocks[b[0]]&&state.blocks[b[0]].on);
-  const t=BLK_TEX[i],c=t[2]&1?mixHex('#'+t[1],'#5d9e3a'):'#'+t[1];
-  const img=ed?`<img alt="" src="${spriteURL(blkPx(i),16)}">`:`<span class="blockfarbe" style="background:${c}"></span>`;
+  
+  const img=`<img alt="" src="${spriteURL(blkThumb(i),16)}">`;
   /* Markieren nur bei veränderten Blöcken: unveränderte bringen nichts ins Paket */
   return`<div class="tile-w${on&&ed?' on':''}"><button class="tile" data-open="blk-${b[0]}"><span class="slot">${img}</span><span class="name">${esc(b[1])}</span>${ed?'<span class="state">geändert</span>':''}</button>${ed?markBtn('blk-'+b[0],b[1],on):''}</div>`;}
 let blkQuery='';
@@ -1365,7 +1484,7 @@ function editBlock(B,id){const b=BLK_BY_ID[id];const groups=blkGroups(b);let cur
   function setPx(i,px){state.blockTex[blkPath(i)]=px;redraw(i);
     if(!tipp&&!(state.blocks[id]&&state.blocks[id].on)){tipp=true;toast('Tipp: Setz oben das Häkchen bei „Markiert“, damit der Block bei „Nur markierte“ ins Paket kommt.');}}
   function hints(){const t=BLK_TEX[cur];const others=(BLK_USERS[cur]||[]).filter(x=>x!==id).map(x=>BLK_BY_ID[x][1]);const h=[];
-    if(!state.blockTex[blkPath(cur)])h.push('Das Original-Bild aus Minecraft gibt es hier nicht. Du startest mit einem Muster in der Original-Farbe. Solange du nichts änderst, bleibt der Block im Spiel wie immer.');
+    if(!state.blockTex[blkPath(cur)])h.push('Das Original-Bild aus Minecraft gibt es hier nicht. Du startest mit einem selbst gezeichneten Muster in ähnlicher Farbe. Solange du nichts änderst, bleibt der Block im Spiel wie immer.');
     if(t[2]&1)h.push('Das Spiel färbt diesen Teil je nach Gegend grün ein (wie Gras und Laub). Helle Grautöne sehen im Spiel am natürlichsten aus.');
     if(t[2]&2)h.push('Dieser Block hat im Spiel durchsichtige Stellen. Was du radierst, wird im Spiel durchsichtig.');
     if(others.length)h.push('Dieses Bild benutzen auch: '+others.slice(0,4).join(', ')+(others.length>4?` und ${others.length-4} weitere`:'')+'. Sie ändern sich mit.');
