@@ -1060,7 +1060,7 @@ function infoFor(kind,key){
       ex.push(`Zähmen: mit ${fleisch?'Fleisch oder Fisch':t.map(x=>NAHRUNG_DE[x]||x).join(', ').replace(/, ([^,]*)$/,' oder $1')} füttern${m.tame?'':', Bananen gehen auch, wenn die Banane im Paket ist'}. Es kann ein paar Versuche dauern, bis Herzen erscheinen.`);
       ex.push(m.fly?'Danach kannst du aufsteigen und fliegen: Wohin du schaust, dorthin fliegt er. Springen lässt ihn steigen.':'Danach kannst du aufsteigen und reiten.');}
     if(m.mag)ex.push('Mag rohen Fisch: Hältst du Kabeljau oder Lachs in der Hand, kommt er zu dir. Füttern heilt ihn, und mit etwas Glück wird er zahm und folgt dir.');
-    if(m.slide)ex.push('Rennt er (zum Beispiel auf der Flucht), rutscht er auf dem Bauch. Auf Eis rutscht er besonders weit.');
+    if(m.slide)ex.push('Rennt er (zum Beispiel auf der Flucht), rutscht er auf dem Bauch.');
     const orte=Object.values(BIOMES).filter(b=>b.tags.length&&b.tags.some(t=>m.biomes.includes(t))).map(b=>b.label);
     ex.push(orte.length?`Taucht von selbst auf in: ${orte.join(', ')}. Außerdem gibt es ein Spawn-Ei.`:'Taucht nicht von selbst auf, es gibt ihn nur als Spawn-Ei.');
     if(m.loot&&LOOT_DE[m.loot])ex.push(`Lässt beim Besiegen ${LOOT_DE[m.loot]} fallen${m.loot.startsWith('wb:')?', wenn sie im Paket ist':''}.`);
