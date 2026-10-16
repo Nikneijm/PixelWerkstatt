@@ -326,6 +326,17 @@ const MOBS={
       {name:'wing_r',parent:'body',pivot:[-3,9,0],cubes:[{origin:[-4,3,-2.5],size:[1,6,5],part:'gefieder',pattern:'flecken'}]},
       {name:'leg0',parent:'body',pivot:[1.5,2,-1],cubes:[{origin:[1,0,-1.5],size:[1,2,1],part:'krallen'}]},
       {name:'leg1',parent:'body',pivot:[-1.5,2,-1],cubes:[{origin:[-2,0,-1.5],size:[1,2,1],part:'krallen'}]}]},
+  /* Pinguin: läuft watschelnd (walk:'zwei'), rutscht beim Rennen auf dem Bauch (slide) und mag rohen Fisch (mag: Tempt, Heilung, Zähmen) */
+  pinguin:{name:'Pinguin',texW:64,fly:false,walk:'zwei',slide:{speed:0.8,panic:1.9},mag:['minecraft:cod','minecraft:salmon'],heal:4,wiggle:[{bone:'tail',axis:1,deg:12,speed:6}],health:10,speed:0.15,box:[0.6,1.0],biomes:['frozen','cold'],weight:8,herd:[2,4],loot:null,
+    parts:{ruecken:['Rücken','#262a35'],bauch:['Bauch','#f6f6f1'],gesicht:['Gesicht','#f6f6f1'],schnabel:['Schnabel','#f2a31c'],fuesse:['Füße','#f08c2a']},
+    bones:[
+      {name:'body',pivot:[0,3,0],cubes:[{origin:[-4,2,-3],size:[8,9,6],part:'ruecken',faces:{north:'bauch'}}]},
+      {name:'head',parent:'body',pivot:[0,11,0],cubes:[{origin:[-3,11,-3],size:[6,5,5],part:'ruecken',faces:{north:'gesicht'},eyes:'klein'},{origin:[-1,12,-5],size:[2,1,2],part:'schnabel'}]},
+      {name:'arm_l',parent:'body',pivot:[4,10,0],cubes:[{origin:[4,4,-1.5],size:[1,6,3],part:'ruecken'}]},
+      {name:'arm_r',parent:'body',pivot:[-4,10,0],cubes:[{origin:[-5,4,-1.5],size:[1,6,3],part:'ruecken'}]},
+      {name:'leg0',parent:'body',pivot:[-2,2,0],cubes:[{origin:[-3.5,0,-3],size:[3,2,5],part:'fuesse'}]},
+      {name:'leg1',parent:'body',pivot:[2,2,0],cubes:[{origin:[0.5,0,-3],size:[3,2,5],part:'fuesse'}]},
+      {name:'tail',parent:'body',pivot:[0,3,3],cubes:[{origin:[-1,2,3],size:[2,2,2],part:'ruecken'}]}]},
   affe:{name:'Affe',texW:64,fly:false,walk:'zwei',health:10,speed:0.28,box:[0.6,1.3],biomes:['jungle'],weight:10,herd:[2,4],loot:'wb:banane',
     parts:{fell:['Fell','#7a4e2d'],gesicht:['Gesicht','#e2b48c']},
     bones:[
@@ -429,6 +440,7 @@ const FORMS={
   schneeeule:{label:'Eule',info:'fliegt',biome:'schnee'},affe:{label:'Zweibeiner',info:'läuft auf zwei Beinen',biome:'dschungel'},
   reittier:{label:'Reittier',info:'zähmbar und reitbar',biome:'wiese'},elefant:{label:'Großes Reittier',info:'groß, zähmbar und reitbar',biome:'savanne'},
   fisch:{label:'Fisch',info:'schwimmt im Wasser',biome:'meer'},qualle:{label:'Qualle',info:'schwebt im Wasser',biome:'meer'},
+  pinguin:{label:'Pinguin',info:'watschelt, rutscht auf dem Bauch und mag Fisch',biome:'schnee'},
   hase:{label:'Häschen',info:'hoppelt',biome:'wiese'},maus:{label:'Maus',info:'klein und flink',biome:'wald'},
   pfau:{label:'Pfau',info:'läuft und schlägt ein Rad',biome:'dschungel'},drache:{label:'Drache',info:'fliegt, zähmbar und reitbar',biome:'nirgends'}};
 const BIOMES={wiese:{label:'Wiese',tags:['plains']},wald:{label:'Wald',tags:['forest']},dschungel:{label:'Dschungel',tags:['jungle']},savanne:{label:'Savanne',tags:['savanna']},
@@ -1010,7 +1022,7 @@ function renderPaket(M){const sm=selection('markiert'),sa=selection('alle');
    Die Tabs selbst zeigen nur einen kurzen allgemeinen Text. */
 const MOB_WAS={vogel:'Ein kleiner Vogel, der durch die Luft fliegt.',schmetterling:'Ein Schmetterling, der über Wiesen und durch Wälder flattert.',
   elefant:'Ein großer, gemütlicher Elefant.',schneeeule:'Eine Eule, die durch verschneite Gegenden fliegt.',affe:'Ein Affe, der auf zwei Beinen läuft.',
-  hase:'Ein Häschen, das herumhoppelt.',pfau:'Ein Pfau, der ein buntes Rad schlägt.',drache:'Ein Drache, auf dem du fliegen kannst.',maus:'Eine kleine, flinke Maus.',
+  hase:'Ein Häschen, das herumhoppelt.',pfau:'Ein Pfau, der ein buntes Rad schlägt.',drache:'Ein Drache, auf dem du fliegen kannst.',maus:'Eine kleine, flinke Maus.',pinguin:'Ein Pinguin, der durch den Schnee watschelt, auf dem Bauch rutscht und Fisch mag.',
   rollkoffer:'Ein Koffer auf Rollen für deine Sachen.'};
 const DEKO_WAS={computer:'Ein Computer zum Hinstellen.',laptop:'Ein Laptop zum Hinstellen.',koffer:'Ein Koffer zum Hinstellen. Er bleibt stehen, wo du ihn hinstellst.',
   palme:'Eine Palme, fast zwei Blöcke hoch.',tisch:'Ein Tisch. Darauf kannst du Dinge stellen, zum Beispiel den Laptop.'};
@@ -1047,6 +1059,8 @@ function infoFor(kind,key){
     if(m.ride){const t=m.tame||['minecraft:wheat','minecraft:apple'];const fleisch=t.some(x=>/beef|porkchop|cod/.test(x));
       ex.push(`Zähmen: mit ${fleisch?'Fleisch oder Fisch':t.map(x=>NAHRUNG_DE[x]||x).join(', ').replace(/, ([^,]*)$/,' oder $1')} füttern${m.tame?'':', Bananen gehen auch, wenn die Banane im Paket ist'}. Es kann ein paar Versuche dauern, bis Herzen erscheinen.`);
       ex.push(m.fly?'Danach kannst du aufsteigen und fliegen: Wohin du schaust, dorthin fliegt er. Springen lässt ihn steigen.':'Danach kannst du aufsteigen und reiten.');}
+    if(m.mag)ex.push('Mag rohen Fisch: Hältst du Kabeljau oder Lachs in der Hand, kommt er zu dir. Füttern heilt ihn, und mit etwas Glück wird er zahm und folgt dir.');
+    if(m.slide)ex.push('Rennt er (zum Beispiel auf der Flucht), rutscht er auf dem Bauch.');
     const orte=Object.values(BIOMES).filter(b=>b.tags.length&&b.tags.some(t=>m.biomes.includes(t))).map(b=>b.label);
     ex.push(orte.length?`Taucht von selbst auf in: ${orte.join(', ')}. Außerdem gibt es ein Spawn-Ei.`:'Taucht nicht von selbst auf, es gibt ihn nur als Spawn-Ei.');
     if(m.loot&&LOOT_DE[m.loot])ex.push(`Lässt beim Besiegen ${LOOT_DE[m.loot]} fallen${m.loot.startsWith('wb:')?', wenn sie im Paket ist':''}.`);
@@ -1414,6 +1428,10 @@ async function packIcon(sel){const c=document.createElement('canvas');c.width=c.
 function walkAnims(){return{format_version:'1.8.0',animations:{
   'animation.wb.vier':{loop:true,bones:{leg0:{rotation:['math.cos(query.anim_time*38.17)*30',0,0]},leg3:{rotation:['math.cos(query.anim_time*38.17)*30',0,0]},leg1:{rotation:['-math.cos(query.anim_time*38.17)*30',0,0]},leg2:{rotation:['-math.cos(query.anim_time*38.17)*30',0,0]}}},
   'animation.wb.zwei':{loop:true,bones:{leg0:{rotation:['math.cos(query.anim_time*38.17)*35',0,0]},arm_r:{rotation:['math.cos(query.anim_time*38.17)*35',0,0]},leg1:{rotation:['-math.cos(query.anim_time*38.17)*35',0,0]},arm_l:{rotation:['-math.cos(query.anim_time*38.17)*35',0,0]}}},
+  /* Pinguin: Bauchrutschen. Rumpf kippt nach vorn, Kopf schaut hoch, Füße ziehen nach hinten, Flügel paddeln */
+  'animation.wb.rutschen':{loop:true,bones:{body:{rotation:[78,0,0],position:[0,-1,0]},head:{rotation:[-62,0,0]},
+    arm_l:{rotation:[0,0,'math.sin(query.life_time*400)*30']},arm_r:{rotation:[0,0,'-math.sin(query.life_time*400)*30']},
+    leg0:{rotation:['math.sin(query.life_time*300)*10',0,0]},leg1:{rotation:['-math.sin(query.life_time*300)*10',0,0]}}},
   'animation.wb.beine':{loop:true,bones:{leg0:{rotation:['math.cos(query.anim_time*38.17)*35',0,0]},leg1:{rotation:['-math.cos(query.anim_time*38.17)*35',0,0]}}},
   /* Rollkoffer: Räder drehen sich mit der zurückgelegten Strecke (Radius 1 px) */
   'animation.wb.rollen':{loop:true,bones:Object.fromEntries(['wheel0','wheel1','wheel2','wheel3'].map(b=>[b,{rotation:['-query.modified_distance_moved*900',0,0]}]))},
@@ -1427,7 +1445,10 @@ function geoJson(key){const m=MODEL(key);const{texW,texH}=layoutMob(m);let mx=0;
 function clientEntity(key){const m=MOBS[key],s=state.mobs[key];const cols=Object.values(s.colors);const anims={},scr=[];
   if(m.walk==='vier'){anims.laufen='animation.wb.vier';scr.push({laufen:'query.modified_move_speed'});if(m.bones.some(b=>b.name==='trunk')){anims.ruhe='animation.wb.elefant_ruhe';scr.push('ruhe');}}
   if(m.wiggle){anims.wackeln='animation.wb.wackeln_'+key;scr.push('wackeln');}
-  if(m.walk==='zwei'){anims.laufen='animation.wb.zwei';scr.push({laufen:'query.modified_move_speed'});}
+  if(m.walk==='zwei'){anims.laufen='animation.wb.zwei';
+    /* slide: schnell = Bauchrutschen, langsam = Watscheln (nie beide gleichzeitig, sie würden dieselben Bones steuern) */
+    if(m.slide){anims.rutschen='animation.wb.rutschen';scr.push({laufen:`query.modified_move_speed > 0.05 && query.modified_move_speed <= ${m.slide.speed}`},{rutschen:`query.modified_move_speed > ${m.slide.speed}`});}
+    else scr.push({laufen:'query.modified_move_speed'});}
   if(m.walk==='beine'){anims.laufen='animation.wb.beine';scr.push({laufen:'query.modified_move_speed'});}
   if(m.flap){anims.flattern='animation.wb.flattern_'+key;scr.push('flattern');}
   if(m.roll){anims.rollen='animation.wb.rollen';scr.push('rollen');}
@@ -1458,6 +1479,13 @@ function bpEntity(key,sel){const m=MOBS[key];const C={
       'minecraft:damage_sensor':{triggers:[{cause:'fall',deals_damage:false},{cause:'drowning',deals_damage:false}]}});}
   else Object.assign(C,{[m.hop?'minecraft:movement.skip':'minecraft:movement.basic']:{},'minecraft:navigation.walk':{can_path_over_water:true,avoid_water:true,avoid_damage_blocks:true},'minecraft:behavior.random_stroll':{priority:6,speed_multiplier:1.0}});
   const ent={description:{identifier:'wb:'+key,is_spawnable:true,is_summonable:true,is_experimental:false},components:C};
+  if(m.slide)C['minecraft:behavior.panic']={priority:1,speed_multiplier:m.slide.panic};/* Flucht = Bauchrutschen, auf Eis zusätzlich rutschig durch die Vanilla-Reibung */
+  if(m.mag){/* Fisch-Freund: lockt mit Tempt, heilt mit Fisch (healable), zähmbar (tameable) und folgt danach seinem Menschen */
+    C['minecraft:behavior.tempt']={priority:3,speed_multiplier:1.2,can_tempt_vertically:false,items:m.mag.slice()};
+    C['minecraft:healable']={force_use:false,items:m.mag.map(i=>({item:i,heal_amount:m.heal||4}))};
+    ent.component_groups={'wb:wild':{'minecraft:tameable':{probability:0.33,tame_items:m.mag.slice(),tame_event:{event:'wb:gezaehmt',target:'self'}}},
+      'wb:zutraulich':{'minecraft:is_tamed':{},'minecraft:behavior.follow_owner':{priority:5,speed_multiplier:1.0,start_distance:8,stop_distance:2}}};
+    ent.events={'minecraft:entity_spawned':{add:{component_groups:['wb:wild']}},'wb:gezaehmt':{remove:{component_groups:['wb:wild']},add:{component_groups:['wb:zutraulich']}}};}
   if(m.ride&&m.fly)C['minecraft:physics']={has_gravity:false};
   if(m.ride){const tame=(m.tame||['minecraft:wheat','minecraft:apple']).slice();if(!m.tame&&sel&&sel.items.includes('banane'))tame.push('wb:banane');
     ent.component_groups={'wb:wild':{'minecraft:tameable':{probability:0.33,tame_items:tame,tame_event:{event:'wb:gezaehmt',target:'self'}}},
