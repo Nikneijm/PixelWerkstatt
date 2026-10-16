@@ -881,8 +881,8 @@ function PixelEditor(host,opts){
   $('#pe-dark',host).onclick=()=>recolor((h,s,l)=>hsl2hex(h,s,Math.max(.03,l-.07)));
   $('#pe-zin',host).onclick=()=>{pe.cell=Math.min(48,pe.cell+2);draw();};
   $('#pe-zout',host).onclick=()=>{pe.cell=Math.max(3,pe.cell-2);draw();};
-  setColor(pe.color);setTool('pen');draw();
-  pe.set=px=>{pe.px=px.slice();draw();swatches();};
+  setColor(pe.color);setTool(opts.tool||'pen');draw();
+  pe.set=(px,clear)=>{pe.px=px.slice();if(clear){pe.undo=[];pe.redo=[];}draw();swatches();};
   /* Ein Tipp von außen (z. B. aufs 3D-Modell): wirkt wie ein Tipp ins Bild, mit dem gewählten Werkzeug und der gewählten Farbe */
   pe.tap=(x,y)=>{if(x<0||y<0||x>=pe.w||y>=pe.h||pe.tool==='hand')return false;
     if(pe.tool==='pick'){const v=pe.px[y*pe.w+x];if(v){setColor(v);setTool('pen');}return true;}
@@ -1863,7 +1863,7 @@ function renderSkins(M){
     <div class="group"><h2>Skins</h2><p class="lead">Baue einen eigenen Charakter: Wähle Farben und zieh Kleidung an oder aus. Du kannst damit in Minecraft herumlaufen, mit anderer Kleidung als sonst. Fertige Charaktere gibt es auch zum Herunterladen.</p></div>
     <div class="card" style="display:grid;gap:16px">
       <div class="sk-grid">
-        <div class="col sk-left"><div class="card" style="background:var(--surface-2);display:grid;gap:8px;justify-items:center;align-content:start"><div class="preview" id="pv" style="width:100%"><div class="hint">Wische zum Drehen. Tippe auf den Charakter, um zu malen.</div></div><canvas id="sk-prev" hidden style="width:100%;max-width:340px;height:auto;image-rendering:pixelated" aria-label="Vorschau deines Charakters, vorne und hinten"></canvas><span class="status" id="sk-pvtxt">Du siehst deinen Charakter in 3D. Jede Änderung zeigt sich sofort.</span></div></div>
+        <div class="col sk-left"><div class="card" style="background:var(--surface-2);display:grid;gap:8px;justify-items:center;align-content:start"><div class="preview" id="pv" style="width:100%"><div class="hint">Wische zum Drehen. Tippe auf den Charakter, um zu malen.</div></div><canvas id="sk-prev" hidden style="width:100%;max-width:340px;height:auto;image-rendering:pixelated" aria-label="Vorschau deines Charakters, vorne und hinten"></canvas><span class="status" id="sk-pvtxt">Jede Änderung zeigt sich sofort am Charakter.</span></div></div>
         <div class="col" style="display:grid;gap:16px">
           <label class="field">Name des Charakters<input type="text" id="sk-name" maxlength="24" value="${esc(SK.cur.name)}"></label>
           ${col('haut','Haut',SK_HAUT)}${col('haare','Haare',SK_HAARE)}${col('augen','Augen')}
@@ -1909,20 +1909,21 @@ function renderSkins(M){
     root.querySelectorAll('[data-vl]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.vl===view.layer));$('#sk-vl').hidden=view.part==='alles';};
   function buildEditor(){const[cx,cy,W,H]=cropRect();const name=view.part+(view.layer?'2':''),regions=[];
     for(const n of Object.keys(SK_BOX)){if(view.part!=='alles'&&n!==name)continue;for(const f of SK_FACES){const[x,y,w,h]=skinFace(SK_BOX[n],f);regions.push([x-cx,y-cy,w,h]);}}
-    const host=$('#sk-pe');
-    pe=PixelEditor(host,{w:W,h:H,px:cropPx(),big:true,regions,color:pe?pe.color:undefined,
-      cell:view.part==='alles'?8:Math.max(8,Math.floor(Math.min(440,(host.clientWidth||340)-24)/W)),
+    const host=$('#sk-pe'),prev=pe,sameView=prev&&prev._v===name;
+    pe=PixelEditor(host,{w:W,h:H,px:cropPx(),big:true,regions,color:prev?prev.color:undefined,tool:prev?prev.tool:undefined,
+      cell:sameView?prev.cell:view.part==='alles'?8:Math.max(8,Math.floor(Math.min(440,(host.clientWidth||340)-24)/W)),
       hint:view.part==='alles'?'Das ist der Charakter, aufgeklappt wie ein Bastelbogen. Wähle oben einen Körperteil, dann wird das Bild größer.':'Das ist ein Teil des Charakters, aufgeklappt. Fahre über ein Feld, um zu sehen, welche Seite es ist.',
       describe:(x,y)=>{const o=own[(cy+y)*64+cx+x];return o?`${SK_FACE_DE[o.face]} · ${SK_PART_DE[o.part]}${o.layer?' (obendrauf)':''}`:'';},
       onChange:(px,final)=>{let fix=false;
         for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=(cy+y)*64+cx+x;if(own[i])full[i]=px[y*W+x];else if(px[y*W+x])fix=true;}   /* Zellen ohne Fläche zählen nicht */
         texDraw();if(final){commitEdits();if(fix)pe.set(cropPx());}}});
-    viewUi();}
+    pe._v=name;viewUi();}
   const setView=(part,layer)=>{view={part,layer:layer?1:0};buildEditor();};
   /* Farbwahl und Kleidung ändern das Grundbild; gemalte Pixel bleiben darüber stehen */
-  const draw=()=>{full=skinPixels(SK.cur);texDraw();if(pe)pe.set(cropPx());};
+  const draw=()=>{full=skinPixels(SK.cur);texDraw();if(pe)pe.set(cropPx(),true);};   /* Undo-Verlauf leeren: alte Basisfarben dürfen nicht als Edits zurückkommen */
   /* 3D-Figur: drehend, mit Tipp zum Malen */
-  const mount3d=()=>{if(!P3.ok||!p3Ensure()){cv.hidden=false;$('#pv').hidden=true;draw();return;}
+  const flat=()=>{cv.hidden=false;$('#pv').hidden=true;$('#sk-pvtxt').textContent='Links von vorn, rechts von hinten. Jede Änderung zeigt sich sofort.';draw();};
+  const mount3d=()=>{if(!P3.ok){flat();return;}try{if(!p3Ensure()){flat();return;}
     p3Mount($('#pv'));p3Clear();const o=skinBuild3D(texCv);P3.obj=o.root;P3.blockMats=[o.mat];P3.scene.add(o.root);P3.kind='skin';
     P3.center.set(0,16,0);P3.dist=88;P3.yaw=Math.PI+.6;P3.pitch=.15;P3.auto=true;
     if(!P3._skL){P3._skL=true;let d0=null;
@@ -1934,7 +1935,9 @@ function renderSkins(M){
       const hits=ray.intersectObject(P3.obj,true).filter(h=>idx(h)>=0&&own[idx(h)]);if(!hits.length||!pe)return;
       const h=hits.find(h=>full[idx(h)])||hits[0],i=idx(h),o=own[i];      /* durchsichtige Stellen der Obendrauf-Schicht überspringen */
       if(view.part!=='alles'&&(view.part!==o.part||view.layer!==o.layer))setView(o.part,o.layer);
-      const[cx,cy]=cropRect();pe.tap(i%64-cx,((i/64)|0)-cy);};};
+      const[cx,cy]=cropRect();pe.tap(i%64-cx,((i/64)|0)-cy);};
+    $('#sk-pvtxt').textContent='Du siehst deinen Charakter in 3D. Jede Änderung zeigt sich sofort.';
+    }catch(err){P3.kind=null;P3.host=null;flat();}};
   const listUi=()=>{const L=$('#sk-liste');
     L.innerHTML=SK.liste.length?SK.liste.map((s,i)=>`<div class="tile-w"><button class="tile" data-edit="${i}"><span class="slot"><img alt="" src="${skThumb(s)}" style="width:20px;height:40px"></span><span class="name">${esc(s.name)}</span></button><button class="btn small" data-del="${i}" aria-label="${esc(s.name)} entfernen" style="width:100%;margin-top:4px">Entfernen</button></div>`).join(''):'<p class="status" style="grid-column:1/-1;margin:0">Noch nichts gespeichert.</p>';
     $('#sk-ver').textContent='Version '+(SK.version+1);};
