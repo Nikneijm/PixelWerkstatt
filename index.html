@@ -1772,10 +1772,11 @@ function skinSlug(n){return String(n||'').toLowerCase().replace(/ä/g,'ae').repl
 function skinPackFiles(skins,packName,ids,ver){
   const used=new Set(),slugs=skins.map(s=>{const b=skinSlug(s.name)||'skin';let k=b,i=2;while(used.has(k))k=b+'_'+i++;used.add(k);return k;});
   const pn=cleanName(packName)||'Meine Charaktere';
-  const lang=[`skinpack.${SK_PACK}=${pn}`,...skins.map((s,i)=>`skin.${SK_PACK}.${slugs[i]}=${cleanName(s.name)||slugs[i]}`)].join('\n')+'\n';
+  const PK=SK_PACK+String(ids.h).toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,8);   /* je Pack eindeutige Kennung */
+  const lang=[`skinpack.${PK}=${pn}`,...skins.map((s,i)=>`skin.${PK}.${slugs[i]}=${cleanName(s.name)||slugs[i]}`)].join('\n')+'\n';
   return{slugs,lang,
     manifest:{format_version:1,header:{name:pn,description:'Skin Pack aus der PixelWerkstatt',uuid:ids.h,version:ver},modules:[{type:'skin_pack',uuid:ids.m,version:ver}]},
-    skins:{skins:skins.map((s,i)=>({localization_name:slugs[i],geometry:SK_GEO,texture:slugs[i]+'.png',type:'free'})),serialize_name:SK_PACK,localization_name:SK_PACK}};}
+    skins:{skins:skins.map((s,i)=>({localization_name:slugs[i],geometry:SK_GEO,texture:slugs[i]+'.png',type:'free'})),serialize_name:PK,localization_name:PK}};}
 async function skinZip(skins,packName,ids,ver){
   const zip=new JSZip(),f=skinPackFiles(skins,packName,ids,ver);
   zip.file('manifest.json',J(f.manifest));zip.file('skins.json',J(f.skins));
