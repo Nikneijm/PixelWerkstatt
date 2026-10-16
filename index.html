@@ -168,6 +168,7 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--surface);borde
     <button role="tab" data-tab="waffen" aria-selected="false">Waffen &amp; Werkzeug</button>
     <button role="tab" data-tab="deko" aria-selected="false">Deko</button>
     <button role="tab" data-tab="tiere" aria-selected="false">Tiere</button>
+    <button role="tab" data-tab="inventar" aria-selected="false">Inventar</button>
     <button role="tab" data-tab="bloecke" aria-selected="false">Blöcke</button>
     <button role="tab" data-tab="skins" aria-selected="false">Skins</button>
     <button role="tab" data-tab="paket" aria-selected="false"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M7 1h2v6h4v2h-2v2H9v1H7v-1H5V9H3V7h4zM1 10h2v3h10v-3h2v5H1z"/></svg>Paket</button>
@@ -292,6 +293,94 @@ const OVERRIDES=[
   {file:'apple',label:'Apfel',def:'kirschen',cat:'essen'},
   {file:'bread',label:'Brot',def:'banane',cat:'essen'},
 ];
+/* ---------------- Inventar: vorhandene Minecraft-Items umgestalten ----------------
+   Nur die Textur wird ersetzt (Resource Pack, gleicher Pfad textures/items/<file>.png), das Item selbst bleibt unverändert.
+   Die Seite liefert nur Dateinamen, deutsche Namen und eine ungefähre Grundfarbe als Startbild mit. Das Startbild wird aus
+   einfachen, selbst gezeichneten Formen (SHAPE_ART) und dieser Farbe erzeugt, Originaltexturen sind nicht dabei.
+   Kategorien (cat): essen, waffen, werkzeug, ruestung, material.
+   OV_NEU: [Dateiname der Textur, deutscher Name, Kategorie, Form, Grundfarbe, Item-Kennung nur falls sie vom Dateinamen abweicht] */
+const OV_CATS=[['essen','Essen und Trinken'],['waffen','Waffen'],['werkzeug','Werkzeuge'],['ruestung','Rüstung'],['material','Material und Sonstiges']];
+const OV_NEU=[
+  /* Essen */
+  ['apple_golden','Goldener Apfel','essen','rund','#f2c230','golden_apple'],['carrot','Karotte','essen','wurzel','#f08c2a'],['carrot_golden','Goldene Karotte','essen','wurzel','#f2c230','golden_carrot'],
+  ['potato','Kartoffel','essen','brocken','#c9a063'],['potato_baked','Ofenkartoffel','essen','brocken','#b5813c','baked_potato'],['potato_poisonous','Giftige Kartoffel','essen','brocken','#8aa84a','poisonous_potato'],
+  ['beetroot','Rote Bete','essen','rund','#8e2a45'],['beef_raw','Rohes Rindfleisch','essen','steak','#c8474a','beef'],['beef_cooked','Steak','essen','steak','#8a4a2a','cooked_beef'],
+  ['porkchop_raw','Rohes Schweinefleisch','essen','steak','#e59a9a','porkchop'],['porkchop_cooked','Gebratenes Schweinefleisch','essen','steak','#a8693f','cooked_porkchop'],
+  ['chicken_raw','Rohes Hähnchen','essen','steak','#e8c2a0','chicken'],['chicken_cooked','Gebratenes Hähnchen','essen','steak','#b9792f','cooked_chicken'],
+  ['mutton_raw','Rohes Hammelfleisch','essen','steak','#b34a52','mutton'],['mutton_cooked','Gebratenes Hammelfleisch','essen','steak','#8f5230','cooked_mutton'],
+  ['rabbit_raw','Rohes Kaninchen','essen','steak','#d9a089','rabbit'],['rabbit_cooked','Gebratenes Kaninchen','essen','steak','#a86a3c','cooked_rabbit'],
+  ['cookie','Keks','essen','scheibe','#c98a45'],['melon','Melonenscheibe','essen','scheibe','#d9453b','melon_slice'],['pumpkin_pie','Kürbiskuchen','essen','scheibe','#d98a3a'],
+  ['dried_kelp','Getrockneter Seetang','essen','brocken','#3f5a38'],['sweet_berries','Süßbeeren','essen','brocken','#c0304a'],
+  /* Waffen */
+  ['wood_sword','Holzschwert','waffen','schwert','#a07a45','wooden_sword'],['stone_sword','Steinschwert','waffen','schwert','#8d9096'],['gold_sword','Goldschwert','waffen','schwert','#f2c230','golden_sword'],
+  ['netherite_sword','Netheritschwert','waffen','schwert','#4a4348'],
+  /* Werkzeuge */
+  ['wood_axe','Holzaxt','werkzeug','axt','#a07a45','wooden_axe'],['stone_axe','Steinaxt','werkzeug','axt','#8d9096'],['iron_axe','Eisenaxt','werkzeug','axt','#d4d6da'],
+  ['gold_axe','Goldaxt','werkzeug','axt','#f2c230','golden_axe'],['diamond_axe','Diamantaxt','werkzeug','axt','#4fd9d0'],['netherite_axe','Netheritaxt','werkzeug','axt','#4a4348'],
+  ['wood_shovel','Holzschaufel','werkzeug','schaufel','#a07a45','wooden_shovel'],['stone_shovel','Steinschaufel','werkzeug','schaufel','#8d9096'],['iron_shovel','Eisenschaufel','werkzeug','schaufel','#d4d6da'],
+  ['gold_shovel','Goldschaufel','werkzeug','schaufel','#f2c230','golden_shovel'],['diamond_shovel','Diamantschaufel','werkzeug','schaufel','#4fd9d0'],['netherite_shovel','Netheritschaufel','werkzeug','schaufel','#4a4348'],
+  ['wood_hoe','Holzhacke','werkzeug','hacke','#a07a45','wooden_hoe'],['stone_hoe','Steinhacke','werkzeug','hacke','#8d9096'],['iron_hoe','Eisenhacke','werkzeug','hacke','#d4d6da'],
+  ['gold_hoe','Goldhacke','werkzeug','hacke','#f2c230','golden_hoe'],['diamond_hoe','Diamanthacke','werkzeug','hacke','#4fd9d0'],['netherite_hoe','Netherithacke','werkzeug','hacke','#4a4348'],
+  ['bucket_empty','Eimer','werkzeug','eimer','#c4c7cc','bucket'],
+  /* Rüstung (nur das Symbol im Inventar, nicht das Aussehen am Körper) */
+  ['leather_helmet','Lederkappe','ruestung','helm','#a0653a'],['leather_chestplate','Lederjacke','ruestung','brust','#a0653a'],['leather_leggings','Lederhose','ruestung','hose','#a0653a'],['leather_boots','Lederstiefel','ruestung','stiefel','#a0653a'],
+  ['chainmail_helmet','Kettenhaube','ruestung','helm','#8a8d92'],['chainmail_chestplate','Kettenhemd','ruestung','brust','#8a8d92'],['chainmail_leggings','Kettenhose','ruestung','hose','#8a8d92'],['chainmail_boots','Kettenstiefel','ruestung','stiefel','#8a8d92'],
+  ['iron_helmet','Eisenhelm','ruestung','helm','#d4d6da'],['iron_chestplate','Eisenbrustpanzer','ruestung','brust','#d4d6da'],['iron_leggings','Eisenhose','ruestung','hose','#d4d6da'],['iron_boots','Eisenstiefel','ruestung','stiefel','#d4d6da'],
+  ['gold_helmet','Goldhelm','ruestung','helm','#f2c230','golden_helmet'],['gold_chestplate','Goldbrustpanzer','ruestung','brust','#f2c230','golden_chestplate'],['gold_leggings','Goldhose','ruestung','hose','#f2c230','golden_leggings'],['gold_boots','Goldstiefel','ruestung','stiefel','#f2c230','golden_boots'],
+  ['diamond_helmet','Diamanthelm','ruestung','helm','#4fd9d0'],['diamond_chestplate','Diamantbrustpanzer','ruestung','brust','#4fd9d0'],['diamond_leggings','Diamanthose','ruestung','hose','#4fd9d0'],['diamond_boots','Diamantstiefel','ruestung','stiefel','#4fd9d0'],
+  ['netherite_helmet','Netherithelm','ruestung','helm','#4a4348'],['netherite_chestplate','Netheritbrustpanzer','ruestung','brust','#4a4348'],['netherite_leggings','Netherithose','ruestung','hose','#4a4348'],['netherite_boots','Netheritstiefel','ruestung','stiefel','#4a4348'],
+  /* Material und Sonstiges */
+  ['stick','Stock','material','stab','#8a5a2b'],['iron_ingot','Eisenbarren','material','barren','#d4d6da'],['gold_ingot','Goldbarren','material','barren','#f2c230'],['copper_ingot','Kupferbarren','material','barren','#c8714b'],
+  ['netherite_ingot','Netheritbarren','material','barren','#4a4348'],['brick','Ziegel','material','barren','#a8503a'],['diamond','Diamant','material','edelstein','#4fd9d0'],['emerald','Smaragd','material','edelstein','#2fbf5a'],
+  ['quartz','Quarz','material','edelstein','#ece6dc'],['amethyst_shard','Amethystsplitter','material','edelstein','#9a6fd6'],['coal','Kohle','material','brocken','#2e2e30'],['charcoal','Holzkohle','material','brocken','#3d3530'],
+  ['flint','Feuerstein','material','brocken','#5a5c60'],['clay_ball','Tonklumpen','material','brocken','#a2a9b8'],['slimeball','Schleimball','material','kugel','#7ec850'],['ender_pearl','Enderperle','material','kugel','#1f6b5c'],
+  ['snowball','Schneeball','material','kugel','#f2f6fa'],['egg','Ei','material','kugel','#e9dcc0'],['gold_nugget','Goldklumpen','material','klumpen','#f2c230'],['iron_nugget','Eisenklumpen','material','klumpen','#d4d6da'],
+  ['redstone_dust','Redstone','material','pulver','#d32a1e','redstone'],['gunpowder','Schwarzpulver','material','pulver','#55575c'],['sugar','Zucker','material','pulver','#f2f2f2'],['glowstone_dust','Glowstone-Staub','material','pulver','#f5c542'],
+  ['blaze_powder','Lohenstaub','material','pulver','#f09a1e'],['blaze_rod','Lohenrute','material','stab','#f09a1e'],['bone','Knochen','material','stab','#ece6d4'],['feather','Feder','material','stab','#f2f2f2'],
+  ['string','Faden','material','stab','#e6e6e6'],['leather','Leder','material','blatt','#a0653a'],['paper','Papier','material','blatt','#f0ead8'],['book_normal','Buch','material','blatt','#7a4a28','book'],
+  ['wheat','Weizen','material','stab','#d9b44a'],
+];
+for(const[file,label,cat,shape,col,id]of OV_NEU)OVERRIDES.push({file,label,cat,shape,col,...(id?{id:'minecraft:'+id}:{})});
+/* Kategorien der ersten Einträge (Schwerter und Spitzhacken) nachtragen */
+for(const o of OVERRIDES)if(!o.cat)o.cat=/pickaxe/.test(o.file)?'werkzeug':'waffen';
+/* Selbst gezeichnete Grundformen: M Hauptfarbe, m Schatten, H Licht, S/s Holz, G/g Grün. Der Rand wird automatisch ergänzt. */
+const SHAPE_ART={
+  helm:['','','','....HHMMMMMM....','...HHMMMMMMMM...','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMm..mMMm...','...HMMm..mMMm...','...MMm....mMm...'],
+  brust:['','','.MMM........MMM.','.HMMM......MMMm.','.HMMMMMMMMMMMMm.','.HMMMMMMMMMMMMm.','.HMMMMMMMMMMMMm.','..MMMMMMMMMMMm..','...MMMMMMMMMMm..','...MMMMMMMMMMm..','...MMMMMMMMMMm..','...MMMMMMMMMMm..','...MMMMMMMMMmm..','...mmmmmmmmmm...'],
+  hose:['','','..HMMMMMMMMMMm..','..HMMMMMMMMMMm..','..HMMMMMMMMMMm..','..HMMMMMMMMMMm..','..HMMMM..MMMMm..','..HMMMM..MMMMm..','..HMMMM..MMMMm..','..HMMMM..MMMMm..','..HMMMM..MMMMm..','..mMMMM..MMMMm..','..mmmmm..mmmmm..'],
+  stiefel:['','','','..HMMm...HMMm...','..HMMm...HMMm...','..HMMm...HMMm...','..HMMm...HMMm...','..HMMm...HMMm...','.HMMMMm..HMMMMm.','.MMMMMm..MMMMMm.','.mmmmmm..mmmmmm.'],
+  barren:['','','','','','.....HHHHHHHHH..','....HMMMMMMMMMm.','...HHMMMMMMMMMm.','..HMMMMMMMMMMmm.','..MMMMMMMMMMmm..','..MMMMMMMMMmm...','..mmmmmmmmmm....'],
+  edelstein:['','','','....HMMMMMm.....','...HHMMMMMMm....','..HHMMMMMMMMm...','..HMMMMMMMMMmm..','...HMMMMMMMmm...','....HMMMMMmm....','.....HMMMmm.....','......HMmm......','.......mm.......'],
+  klumpen:['','','','','','','','.....HMMMm......','....HMMMMMm.....','....MMMMMMmm....','.....mmmmm......'],
+  brocken:['','','','','.....MMMMM......','...HHMMMMMMm....','..HHMMMMMMMMm...','..HMMMMMMMMMm...','..MMMMMMMMMMmm..','..MMMMMMMMMmm...','...MMMMMMMmm....','....mmmmmmm.....'],
+  rund:['','','','.......S........','.....MMSMMM.....','...HHMMMMMMMm...','..HHMMMMMMMMMm..','..HMMMMMMMMMMm..','..HMMMMMMMMMMm..','..MMMMMMMMMMMm..','...MMMMMMMMMm...','...mMMMMMMMmm...','.....mmmmmm.....'],
+  kugel:['','','','','.....MMMMMM.....','...HHMMMMMMMm...','..HHMMMMMMMMMm..','..HMMMMMMMMMMm..','..HMMMMMMMMMMm..','..MMMMMMMMMMMm..','...MMMMMMMMMm...','...mMMMMMMMmm...','.....mmmmmm.....'],
+  scheibe:['','','','','.....MMMMMM.....','...HMMMMMMMMm...','..HMMMMMMMMMMm..','..MMMMMMMMMMMm..','..MMMMMMMMMMMm..','..MMMMMMMMMMmm..','...mMMMMMMMmm...','.....mmmmmm.....'],
+  steak:['','','','....MMMMMM......','..HMMMMMMMMm....','.HMMMMMMMMMMm...','.HMMMMMMMMMMMm..','.MMMMMMMMMMMMm..','..MMMMMMMMMMm...','...mmMMMMMmm....','.....mmmmm......'],
+  wurzel:['','','','.........gG.....','........gGg.....','.......HMMm......','......HMMMm......','.....HMMMm.......','....HMMMm........','...HMMMm.........','..HMMm...........','..Mmm............','.mm.............'],
+  pulver:['','','','','','','','','.......MM.......','.....HMMMMm.....','...HMMMMMMMMm...','..HMMMMMMMMMMm..','..mmmmmmmmmmmm..'],
+  blatt:['','','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','...mmmmmmmmmm...'],
+  eimer:['','','','','..HMMMMMMMMMMm..','..HMMMMMMMMMMm..','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','...HMMMMMMMMm...','....mMMMMMMm....','....mmmmmmmm....'],
+};
+/* Formen aus Linien: Stock (Farbe der Zutat), Schwert und Werkzeuge mit Holzstiel. Gibt 256 Farben (oder '' für leer) zurück. */
+function shapePx(shape,col){
+  const mix=(c,f)=>{const n=parseInt(c.slice(1),16),t=f<0?0:255,a=Math.abs(f);const ch=s=>Math.round(((n>>s)&255)*(1-a)+t*a);return'#'+[16,8,0].map(s=>ch(s).toString(16).padStart(2,'0')).join('');};
+  const pal={M:col,m:mix(col,-0.28),H:mix(col,0.32),S:'#8a5a2b',s:'#5e3a18',G:'#5fb547',g:'#2f7a2a'};
+  const grid=Array.from({length:16},()=>Array(16).fill(''));
+  const put=(x,y,k)=>{if(x>=0&&x<16&&y>=0&&y<16)grid[y][x]=k;};
+  const stiel=(x0,y0,n)=>{for(let i=0;i<n;i++){put(x0+i,y0-i,'S');if(i%2)put(x0+i,y0-i+1,'s');}};
+  if(SHAPE_ART[shape])SHAPE_ART[shape].forEach((r,y)=>{for(let x=0;x<16;x++)if(r[x]&&r[x]!=='.')put(x,y,r[x]);});
+  else if(shape==='stab'){for(let i=0;i<11;i++){put(2+i,13-i,'M');put(3+i,13-i,i%2?'H':'m');}}
+  else if(shape==='schwert'){stiel(2,13,3);for(let i=0;i<8;i++){put(5+i,10-i,'M');put(6+i,10-i,'H');}put(3,9,'s');put(4,10,'s');put(5,11,'s');put(6,12,'s');put(7,10,'s');}
+  else if(shape==='axt'){stiel(2,13,9);['..MMM','.HMMMm','HMMMMm','HMMMMm','.HMMMm','..MMm'].forEach((r,j)=>{for(let x=0;x<r.length;x++)if(r[x]!=='.')put(8+x,2+j,r[x]);});}
+  else if(shape==='schaufel'){stiel(2,13,8);['.HMMm.','HMMMMm','HMMMMm','HMMMMm','.mMMm.'].forEach((r,j)=>{for(let x=0;x<r.length;x++)if(r[x]!=='.')put(9+x,1+j,r[x]);});}
+  else if(shape==='hacke'){stiel(2,13,9);for(let x=6;x<=12;x++){put(x,2,x<8?'H':'M');put(x,3,'m');}put(6,4,'M');put(6,5,'m');}
+  const px=new Array(256).fill('');
+  for(let y=0;y<16;y++)for(let x=0;x<16;x++)if(grid[y][x])px[y*16+x]=pal[grid[y][x]]||col;
+  const rand=mix(col,-0.68);
+  for(let y=0;y<16;y++)for(let x=0;x<16;x++)if(!grid[y][x]&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>grid[y+dy]&&grid[y+dy][x+dx]))px[y*16+x]=rand;
+  return px;}
+const ovStartPx=o=>o.shape?shapePx(o.shape,o.col):tplPx(o.def);
 const MOBS={
   vogel:{name:'Vogel',texW:64,fly:true,flap:{deg:40,rad:18},health:4,speed:0.25,flySpeed:0.18,box:[0.45,0.45],biomes:['forest','plains'],weight:10,herd:[1,3],loot:'minecraft:feather',
     parts:{gefieder:['Gefieder','#3f7fd6'],brust:['Brust','#f2c14e'],fluegel:['Flügel','#2b5aa0'],schnabel:['Schnabel','#f08c2a'],beine:['Beine','#7a5b3e']},
@@ -738,7 +827,7 @@ function defaultState(){
       armor:{on:false,tpl:'ruestung9',px:tplPx('ruestung9')},xp:{on:false,preset:'Klassisch',voll:'#7ec850',leer:'#22301f',zahl:'#80ff20'}},
     items:{},overrides:{},mobs:{},deko:{},blockTex:{},blocks:{}};
   for(const k of BUILTIN_ITEMS){const d=ITEMS[k];st.items[k]={on:false,name:d.name,tpl:d.tpl,px:tplPx(d.tpl),value:d.value};if(WEAR[k])Object.assign(st.items[k],{colors:mobColors(WEAR[k]),edits:{}});}
-  for(const o of OVERRIDES)st.overrides[o.file]={on:false,tpl:o.def,px:tplPx(o.def)};
+  for(const o of OVERRIDES)st.overrides[o.file]={on:false,tpl:o.def||'',px:ovStartPx(o)};
   for(const k of BUILTIN_MOBS){const m=MOBS[k];st.mobs[k]={on:false,colors:mobColors(m),edits:{},sounds:{}};}
   for(const k of BUILTIN_DEKO)st.deko[k]={on:false,colors:mobColors(DEKO[k]),edits:{}};
   return st;}
@@ -1080,16 +1169,27 @@ function render(){const M=$('#main');
       <div class="grid">${BUILTIN_MOBS.filter(k=>!MOBS[k].roll).map(mobTile).join('')}</div></div>
       <div class="group"><h2>Eigene Tiere</h2><p class="lead">Erfinde ein eigenes Tier: Wähle eine Bauform wie Fisch, Qualle, Vogel oder Reittier, gib ihm einen Namen und bemale es.</p>
       <div class="grid">${Object.keys(state.mobs).filter(k=>state.mobs[k].custom&&MOBS[k]).map(mobTile).join('')}${newTile('new-mob','Neues Tier')}</div></div></section>`;}
+  if(tab==='inventar')renderInventar(M);
   if(tab==='bloecke')renderBloecke(M);
   if(tab==='skins')renderSkins(M);
   if(tab==='paket')renderPaket(M);
-  if(tab!=='paket'&&tab!=='bloecke')markUi(M,true);
+  if(tab!=='paket'&&tab!=='bloecke'&&tab!=='inventar')markUi(M,true);
   M.onclick=e=>{const m=e.target.closest('[data-mark]');if(m){markSet(m.dataset.mark,!markGet(m.dataset.mark));save();markRefresh(M);return;}
     const a=e.target.closest('[data-markall]');if(a){const v=!a.dataset.all;for(const id of markIds(a.closest(a.dataset.markall==='tab'?'section':'.group')))markSet(id,v);save();markRefresh(M);
       toast(v?'Alles in diesem Bereich ist markiert.':'Markierungen in diesem Bereich entfernt.');return;}
     const b=e.target.closest('[data-open]');if(b)openSheet(b.dataset.open);};}
 
 function itemTile(k){return tile('item-'+k,spriteURL(state.items[k].px,16),state.items[k].name,state.items[k].on);}
+let ovQuery='';
+/* Tab „Inventar“: vorhandene Minecraft-Items umgestalten (nur das Bild ändert sich), getrennt von „Blöcke“ und von neuen Items */
+function renderInventar(M){
+  M.innerHTML=`<section class="panel"><div class="group" data-noall><h2>Inventar</h2><p class="lead">Hier gestaltest du Dinge um, die es in Minecraft schon gibt: Essen, Waffen, Werkzeuge, Rüstung und Material wie Stöcke, Barren oder Diamanten. Es bekommt ein neues Aussehen und funktioniert weiter wie vorher. Das sind keine neuen Items, und Blöcke findest du im Tab Blöcke.</p>
+    <input type="search" id="oq" placeholder="Item suchen, zum Beispiel Diamant oder Stock" aria-label="Item suchen" value="${esc(ovQuery)}"></div><div id="olist" style="display:grid;gap:22px"></div></section>`;
+  const draw=()=>{const q=ovQuery.trim().toLowerCase(),L=$('#olist');
+    if(q){const hits=OVERRIDES.filter(o=>o.label.toLowerCase().includes(q)||o.file.includes(q.replace(/ +/g,'_')));
+      L.innerHTML=`<div class="group" data-noall><h3>${hits.length} Treffer</h3>${hits.length?`<div class="grid">${hits.map(ovTile).join('')}</div>`:'<p class="status">Nichts gefunden. Versuch ein anderes Wort.</p>'}</div>`;markUi(M,true);return;}
+    L.innerHTML=OV_CATS.map(([c,n])=>`<div class="group"><h3>${n}</h3><div class="grid">${OVERRIDES.filter(o=>ovCat(o.file)===c).map(ovTile).join('')}</div></div>`).join('');markUi(M,true);};
+  draw();$('#oq').oninput=e=>{ovQuery=e.target.value;draw();};}
 function ovTile(o){return tile('ov-'+o.file,spriteURL(state.overrides[o.file].px,16),o.label,state.overrides[o.file].on);}
 /* Tabs „Essen“ und „Waffen & Werkzeug“: eingebaute Items, eigene Items, umgestaltete Vanilla-Items der passenden Art */
 function renderItemTab(M,cat){const E=cat==='essen';
@@ -1100,8 +1200,7 @@ function renderItemTab(M,cat){const E=cat==='essen';
       <div class="grid">${builtin.map(itemTile).join('')}</div></div>
     <div class="group"><h2>${E?'Eigenes Essen':'Eigene Waffen und Werkzeuge'}</h2><p class="lead">${E?'Male dein eigenes Essen oder Getränk und gib ihm einen Namen, zum Beispiel einen Fisch.':'Male dein eigenes Schwert, Werkzeug, Wurfding oder Fluggerät und gib ihm einen Namen.'}</p>
       <div class="grid">${own.map(itemTile).join('')}${newTile('new-'+cat,E?'Neues Essen':'Neues Teil')}</div></div>
-    <div class="group"><h2>${E?'Vorhandenes Essen umgestalten':'Vorhandene Werkzeuge umgestalten'}</h2><p class="lead">Es bekommt ein neues Aussehen und funktioniert weiter wie vorher.${E?'':' Eine Spitzhacke, die wie eine Waffe aussieht, baut also trotzdem Blöcke ab.'}</p>
-      <div class="grid">${OVERRIDES.filter(o=>ovCat(o.file)===cat).map(ovTile).join('')}</div></div></section>`;}
+    <p class="status">Dinge, die es in Minecraft schon gibt, zum Beispiel ${E?'Apfel, Brot oder Steak':'Schwerter, Spitzhacken oder Äxte'}, gestaltest du im Tab <b>Inventar</b> um.</p></section>`;}
 function dekoTile(k){return tile('deko-'+k,thumbCache['d:'+k]||(thumbCache['d:'+k]=mobThumb(k)||spriteURL(new Array(256).fill(Object.values(state.deko[k].colors)[0]),16)),dekoName(k),state.deko[k].on);}
 function renderDeko(M){const own=Object.keys(state.deko).filter(k=>state.deko[k].custom&&DEKO[k]);
   const hold=Object.keys(state.items).filter(k=>state.items[k].custom&&ITEMS[k]&&itemCat(k)==='deko');
@@ -1292,13 +1391,16 @@ function editHotbar(B){const c=state.hud.hotbar;
    aussieht (hand, 16×16). Solange hand fehlt, sieht es in der Hand aus wie im Inventar. Im Paket wird daraus ein Attachable (handRP). */
 const handLook=o=>Array.isArray(o.hand)&&o.hand.length===256?o.hand:o.px;
 const handPx=o=>Array.isArray(o.hand)&&o.hand.length===256&&o.hand.join()!==o.px.join()?o.hand:null;
+/* Rüstung und Wurf-Items: kein Attachable mit Vanilla-Kennung (sonst ersetzt es die Rüstung am Körper bzw. das Wurfobjekt), nur das Inventar-Symbol */
+const OV_NOHAND=new Set(['snowball','egg','ender_pearl']);
+const ovNoHand=o=>!!o&&(o.cat==='ruestung'||OV_NOHAND.has(o.file));
 function zielCard(first,label,mitInfo){return`<div class="card" style="display:grid;gap:10px"><h3>Was malst du?</h3><div class="row" id="ziel">
   <button class="btn" data-z="${first}" aria-pressed="false">${label}</button><button class="btn" data-z="icon" aria-pressed="false">Bild im Inventar</button></div>
   ${mitInfo?'<p class="status" id="ziel-info" style="margin:0"></p><button class="btn small" id="gleich" style="justify-self:start" hidden>Wie im Inventar</button>':''}</div>`;}
 /* Pixel-Editor mit Umschalter „In der Hand“ / „Bild im Inventar“ für 16×16-Items (eigene Items und umgestaltete Vanilla-Items) */
-function spriteZiele(B,o){let ziel='icon',pe=null;
+function spriteZiele(B,o,nohand){let ziel='icon',pe=null;
   const show=px=>p3ShowSprite(px,16);
-  const info=()=>{const t=$('#ziel-info',B),g=$('#gleich',B),eigen=!!handPx(o);
+  const info=()=>{if(nohand)return;const t=$('#ziel-info',B),g=$('#gleich',B),eigen=!!handPx(o);
     if(ziel==='icon')t.textContent=eigen?'So sieht es im Inventar und in der Hotbar aus. In der Hand sieht es anders aus, das malst du unter „In der Hand“.'
       :'So sieht es im Inventar und in der Hotbar aus. Solange du „In der Hand“ nicht extra bemalst, sieht es in der Hand genauso aus.';
     else t.textContent=eigen?'So hältst du es im Spiel in der Hand. Das Bild im Inventar bleibt, wie es ist.'
@@ -1308,9 +1410,9 @@ function spriteZiele(B,o){let ziel='icon',pe=null;
     const px=ziel==='hand'?handLook(o):o.px;show(px);
     pe=PixelEditor($('#pe',B),{w:16,h:16,px,onChange:(p,f)=>{if(ziel==='hand')o.hand=p;else o.px=p;show(p);if(f){save();info();}}});info();};
   mount();
-  $('#ziel',B).onclick=e=>{const b=e.target.closest('[data-z]');if(!b||b.dataset.z===ziel)return;ziel=b.dataset.z;mount();};
+  if(!nohand){$('#ziel',B).onclick=e=>{const b=e.target.closest('[data-z]');if(!b||b.dataset.z===ziel)return;ziel=b.dataset.z;mount();};
   $('#gleich',B).onclick=()=>{if(!confirm('Soll es in der Hand wieder genauso aussehen wie im Inventar? Was du für die Hand gemalt hast, ist dann weg.'))return;
-    delete o.hand;mount();save();toast('In der Hand sieht es jetzt wieder aus wie im Inventar.');};
+    delete o.hand;mount();save();toast('In der Hand sieht es jetzt wieder aus wie im Inventar.');};}
   return{ziel:()=>ziel,load:px=>{if(ziel==='hand')o.hand=px.slice();else o.px=px.slice();pe.set(px);show(px);info();save();}};}
 
 function editItem(B,key){const it=state.items[key],d=ITEMS[key],own=!!it.custom;
@@ -1427,13 +1529,13 @@ function newMob(B){let form='fisch';
     state.mobs[key]={on:true,name,colors:mobColors(def),edits:{},sounds:{},custom:{form,biome:$('#bio',B).value}};
     syncCustoms();save();toast(`„${name}“ ist angelegt und markiert.`);openSheet('mob-'+key);};}
 
-function editOverride(B,file){const o=state.overrides[file];
+function editOverride(B,file){const o=state.overrides[file],nh=ovNoHand(OVERRIDES.find(x=>x.file===file));
   B.innerHTML=`<div class="col">${previewBlock()}<div class="card" style="display:grid;gap:12px">
       ${markSwitch(o.on)}
-      <label class="field">Neues Aussehen<select id="tp">${tplOptions(TPL16,o.tpl)}</select></label>
+      <label class="field">Neues Aussehen<select id="tp">${o.tpl?'':'<option value="">Selbst gezeichnete Form</option>'}${tplOptions(TPL16,o.tpl)}</select></label>
 </div></div>
-    <div class="col">${zielCard('hand','In der Hand',true)}<div class="card" id="pe"></div></div>`;
-  p3Mount($('#pv',B));const sz=spriteZiele(B,o);
+    <div class="col">${nh?'<div class="card"><p class="status" style="margin:0">Hier bemalst du das Bild im Inventar und in der Hotbar. Wie es am Körper oder in der Luft aussieht, bleibt wie im Spiel.</p></div>':zielCard('hand','In der Hand',true)}<div class="card" id="pe"></div></div>`;
+  p3Mount($('#pv',B));const sz=spriteZiele(B,o,nh);
   $('#on',B).onchange=e=>{o.on=e.target.checked;save();};
   $('#tp',B).onchange=e=>{if(sz.ziel()==='icon')o.tpl=e.target.value;sz.load(tplPx(e.target.value));};}
 
@@ -1674,6 +1776,7 @@ const handRP=(id,tex)=>({format_version:'1.10.0','minecraft:attachable':{descrip
   geometry:{default:'geometry.wb_hand_item'},animations:{wield:'animation.wb.hand_item.wield'},scripts:{animate:['wield']},render_controllers:['controller.render.item_default']}}});
 /* Dateinamen der Item-Texturen weichen bei zwei Vanilla-Items von der Kennung ab */
 const OV_ID={wood_pickaxe:'minecraft:wooden_pickaxe',gold_pickaxe:'minecraft:golden_pickaxe'};
+for(const o of OVERRIDES)if(o.id)OV_ID[o.file]=o.id;
 /* Fliegen mit dem Drachen: kleines Skript (Script API, stabile Version @minecraft/server 1.15.0, keine Experimente nötig).
    In der Hand halten = langsames Fallen (slow_falling), Benutzen (Tippen) = Windstoß nach oben (levitation). */
 const SCRIPT_API='1.15.0';
@@ -1722,7 +1825,9 @@ function selection(mode){const all=mode==='alle';const pick=o=>all||!!(o&&o.on);
   const items=Object.keys(ITEMS).filter(k=>state.items[k]&&pick(state.items[k]));if(items.includes('flinte')&&!items.includes('patrone'))items.push('patrone');
   const mobs=Object.keys(MOBS).filter(k=>state.mobs[k]&&pick(state.mobs[k]));
   const deko=Object.keys(DEKO).filter(k=>state.deko[k]&&pick(state.deko[k]));
-  const overrides=OVERRIDES.map(o=>o.file).filter(f=>pick(state.overrides[f]));
+  /* „Alle Elemente“ nimmt Vanilla-Items nur mit, wenn sie markiert oder verändert sind (Bild weicht vom Startbild ab), sonst würden unveränderte Icons durch Platzhalter ersetzt */
+  const ovChanged=o=>{const s=state.overrides[o.file];return !!s&&(s.on||!!o.def||(Array.isArray(s.px)&&s.px.join()!==ovStartPx(o).join())||(!ovNoHand(o)&&!!handPx(s)));};
+  const overrides=OVERRIDES.filter(o=>all?ovChanged(o):pick(state.overrides[o.file])).map(o=>o.file);
   const hud=Object.fromEntries(HUD_KEYS.map(k=>[k,pick(state.hud[k])]));
   const tex=new Map();
   const addTex=i=>{const p=blkPath(i),px=state.blockTex[p];if(!px)return;tex.set(p,px);if(BLK_TEX[i][2]&4)tex.set(p+'_opaque',px);
@@ -1768,7 +1873,7 @@ async function buildZip(full,mode='alle'){
       await addPng(rp,'textures/ui/hotbar_start_cap.png',capPx(h.hotbar),1,22);await addPng(rp,'textures/ui/hotbar_end_cap.png',capPx(h.hotbar),1,22);await addPng(rp,'textures/ui/selected_hotbar_slot.png',selectedPx(h.hotbar),24,24);}
     for(const f of sel.overrides)await addPng(rp,`textures/items/${f}.png`,state.overrides[f].px,16,16);
     /* Eigenes Aussehen in der Hand (Attachables): umgestaltete Vanilla-Items auch in „Nur Aussehen“, eigene Items nur im Komplettpaket */
-    const haende=[];for(const f of sel.overrides){const hp=handPx(state.overrides[f]);if(hp)haende.push([OV_ID[f]||'minecraft:'+f,'textures/items/wb_hand/'+f,hp]);}
+    const haende=[];for(const f of sel.overrides){const hp=ovNoHand(OVERRIDES.find(x=>x.file===f))?null:handPx(state.overrides[f]);if(hp)haende.push([OV_ID[f]||'minecraft:'+f,'textures/items/wb_hand/'+f,hp]);}
     if(full)for(const k of sel.items){const hp=ITEMS[k].kind!=='wear'&&handPx(state.items[k]);if(hp)haende.push(['wb:'+k,'textures/items/wb/'+k+'_hand',hp]);}
     for(const[id,t,px]of haende){await addPng(rp,t+'.png',px,16,16);rp.file(`attachables/${id.replace(':','_')}_hand.json`,J(handRP(id,t)));}
     if(haende.length){rp.file('models/entity/wb_hand_item.geo.json',J(HAND_GEO));rp.file('animations/wb_hand_item.animation.json',J(HAND_ANIM));}
