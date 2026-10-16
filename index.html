@@ -90,7 +90,11 @@ input[type=color]{width:44px;height:44px;border:2px solid var(--line);border-rad
 .pe-wrap{overflow:auto;max-height:62vh;background:var(--surface-2);border:2px solid var(--line);border-radius:6px;padding:10px}
 .pe-wrap canvas{display:block;image-rendering:pixelated;touch-action:none;margin:0 auto}
 .pe-wrap.hand canvas{touch-action:pan-x pan-y;cursor:grab}
-.swatches{display:flex;flex-wrap:wrap;gap:5px}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+/* Pixel-Editor: alle Zeilen mit festem Abstand untereinander, egal in welcher Karte er steckt. Farbwähler und Farbfelder nebeneinander. */
+.pe-box{display:grid;gap:14px;min-width:0}
+.pe-colors{display:flex;gap:12px;align-items:flex-start}
+.pe-colors .swatches{flex:1;min-width:0;padding:4px 0}
 .swatches button{width:30px;height:30px;border-radius:3px;border:2px solid var(--line);cursor:pointer;padding:0}
 .swatches button.cur{outline:3px solid var(--gold);outline-offset:1px}
 .status{font-size:13px;color:var(--ink-2);min-height:20px}
@@ -786,12 +790,12 @@ const DL_ICON='<svg class="ico" viewBox="0 0 16 16" aria-hidden="true" focusable
 const BASE_COLORS=['#000000','#ffffff','#8b8b8b','#e3242b','#f08c2a','#f5d63d','#5fb547','#2c9459','#3fd0ff','#3f7fd6','#7a4fd0','#e66fb4','#7a4e2d','#e2b48c'];
 function PixelEditor(host,opts){
   const pe={w:opts.w,h:opts.h,px:opts.px.slice(),tool:'pen',color:opts.color||'#e3242b',mirror:false,undo:[],redo:[],cell:opts.cell||Math.max(8,Math.floor(Math.min(420,(host.clientWidth||340)-24)/opts.w))};
-  host.innerHTML=`<div class="pe-tools" role="toolbar" aria-label="Werkzeuge">
+  host.innerHTML=`<div class="pe-box"><div class="pe-tools" role="toolbar" aria-label="Werkzeuge">
       <button class="btn small" data-t="pen">Stift</button><button class="btn small" data-t="erase">Radierer</button><button class="btn small" data-t="fill">Eimer</button>
       <button class="btn small" data-t="pick">Pipette</button><button class="btn small" data-t="swap" title="Tippe auf eine Farbe im Bild: alle Pixel dieser Farbe bekommen die aktuelle Farbe">Farbe tauschen</button>
       ${opts.big?'<button class="btn small" data-t="hand">Verschieben</button>':''}
     </div>
-    <div class="row"><input type="color" id="pe-color" aria-label="Farbe wählen"><div class="swatches" id="pe-sw"></div></div>
+    <div class="pe-colors"><input type="color" id="pe-color" aria-label="Farbe wählen"><div class="swatches" id="pe-sw"></div></div>
     <div class="pe-tools">
       <button class="btn small" id="pe-undo">↶ Zurück</button><button class="btn small" id="pe-redo">↷ Vor</button>
       ${opts.big?'':'<button class="btn small" id="pe-mirror" aria-pressed="false">Spiegeln</button>'}
@@ -800,7 +804,7 @@ function PixelEditor(host,opts){
       <button class="btn small" id="pe-zin">＋ Größer</button><button class="btn small" id="pe-zout">− Kleiner</button>
     </div>
     <div class="pe-wrap" id="pe-wrap"><canvas id="pe-cv"></canvas></div>
-    <div class="status" id="pe-status" aria-live="polite"></div>`;
+    <div class="status" id="pe-status" aria-live="polite"></div></div>`;
   const cv=$('#pe-cv',host),g=cv.getContext('2d'),wrap=$('#pe-wrap',host);
   function draw(){const c=pe.cell;cv.width=pe.w*c;cv.height=pe.h*c;const cs=getComputedStyle(document.documentElement);const ca=cs.getPropertyValue('--check-a').trim()||'#ddd',cb=cs.getPropertyValue('--check-b').trim()||'#eee';
     for(let y=0;y<pe.h;y++)for(let x=0;x<pe.w;x++){const v=pe.px[y*pe.w+x];if(v){g.fillStyle=v;g.fillRect(x*c,y*c,c,c);}else{const h=c/2;g.fillStyle=ca;g.fillRect(x*c,y*c,c,c);g.fillStyle=cb;g.fillRect(x*c,y*c,h,h);g.fillRect(x*c+h,y*c+h,h,h);}}
@@ -1012,6 +1016,7 @@ const DEKO_WAS={computer:'Ein Computer zum Hinstellen.',laptop:'Ein Laptop zum H
   palme:'Eine Palme, fast zwei Blöcke hoch.',tisch:'Ein Tisch. Darauf kannst du Dinge stellen, zum Beispiel den Laptop.'};
 const NAHRUNG_DE={'minecraft:wheat':'Weizen','minecraft:apple':'Äpfeln','wb:banane':'Bananen'};
 const LOOT_DE={'minecraft:feather':'eine Feder','wb:banane':'eine Banane'};
+const HAND_INFO='Unter „Was malst du?“ wählst du, ob du es in der Hand oder sein Bild im Inventar bemalst.';
 const VOLL='Kommt nur mit dem Komplettpaket ins Spiel.',OPTIK='Kommt auch mit „Nur Aussehen“ ins Spiel.',SUCHE='Im Spiel findest du es im Kreativ-Inventar über die Suche.';
 function infoFor(kind,key){
   if(kind==='hud'){const h={
@@ -1032,8 +1037,9 @@ function infoFor(kind,key){
     if(d.kind==='wear'){was='Ein Rucksack zum Anziehen. Er sitzt auf deinem Rücken.';ex.push('Anziehen: Im Inventar in das Rüstungsfeld für die Brust legen.','Er belegt das Brust-Feld. Einen Brustpanzer kannst du dann nicht gleichzeitig tragen.','Er schützt nicht, und man kann nichts hineinlegen. Für Sachen gibt es den Rollkoffer.','Unter „Was malst du?“ wählst du, ob du den Rucksack selbst oder sein Bild im Inventar bemalst.');}
     if(d.kind==='misc'){was='Ein Gegenstand zum Sammeln, Herumtragen und Verschenken.';ex.push('Man hält ihn in der Hand, aufstellen kann man ihn nicht.');}
     if(own)was='Dein eigenes Teil. '+was;
+    if(d.kind!=='wear')ex.push(HAND_INFO+(d.kind==='throw'?' Fliegt es durch die Luft, sieht es aus wie in der Hand.':''));
     return[was,ex.concat(SUCHE,VOLL)];}
-  if(kind==='ov'){const o=OVERRIDES.find(x=>x.file===key);return[`Gibt dem Item „${o.label}“ ein neues Aussehen.`,['Es kann danach alles wie vorher, nur das Bild ist neu.',OPTIK]];}
+  if(kind==='ov'){const o=OVERRIDES.find(x=>x.file===key);return[`Gibt dem Item „${o.label}“ ein neues Aussehen.`,['Es kann danach alles wie vorher, nur das Bild ist neu.',HAND_INFO,OPTIK]];}
   if(kind==='mob'){const m=MOBS[key],s=state.mobs[key],ex=[];
     if(m.roll)return[MOB_WAS[key],['Schieb ihn an, dann rollt er. Die Räder drehen sich dabei.','Mit einer Leine in der Hand antippen: Dann rollt er hinter dir her.','Mit leerer Hand antippen: Er geht auf wie eine Kiste und du kannst 27 Fächer füllen.','Geht er kaputt, fällt alles heraus, was drin war.','Es gibt ihn nur als Spawn-Ei im Kreativ-Inventar.',VOLL]];
     let was=MOB_WAS[key]||'';if(s.custom){const f=FORMS[s.custom.form];was=`Dein eigenes Tier${f?`, Bauform „${f.label}“: ${f.info}`:''}.`;}
@@ -1133,6 +1139,31 @@ function editHotbar(B){const c=state.hud.hotbar;
   const map={'hb-r':'rahmen','hb-f':'feld','hb-a':'auswahl'};for(const[i,k]of Object.entries(map))$('#'+i,B).oninput=e=>{c[k]=e.target.value;c.preset='';B.querySelectorAll('[data-p]').forEach(b=>b.setAttribute('aria-pressed','false'));upd();};
   $('#hb-pre',B).onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;const v=HOTBAR_PRESETS[b.dataset.p];[c.rahmen,c.feld,c.auswahl]=v;c.preset=b.dataset.p;$('#hb-r',B).value=v[0];$('#hb-f',B).value=v[1];$('#hb-a',B).value=v[2];B.querySelectorAll('[data-p]').forEach(x=>x.setAttribute('aria-pressed',x===b));upd();};}
 
+/* „In der Hand“ und „Bild im Inventar“: Jedes Item hat ein Bild im Inventar (px, 16×16). Zusätzlich kann man malen, wie es in der Hand
+   aussieht (hand, 16×16). Solange hand fehlt, sieht es in der Hand aus wie im Inventar. Im Paket wird daraus ein Attachable (handRP). */
+const handLook=o=>Array.isArray(o.hand)&&o.hand.length===256?o.hand:o.px;
+const handPx=o=>Array.isArray(o.hand)&&o.hand.length===256&&o.hand.join()!==o.px.join()?o.hand:null;
+function zielCard(first,label,mitInfo){return`<div class="card" style="display:grid;gap:10px"><h3>Was malst du?</h3><div class="row" id="ziel">
+  <button class="btn" data-z="${first}" aria-pressed="false">${label}</button><button class="btn" data-z="icon" aria-pressed="false">Bild im Inventar</button></div>
+  ${mitInfo?'<p class="status" id="ziel-info" style="margin:0"></p><button class="btn small" id="gleich" style="justify-self:start" hidden>Wie im Inventar</button>':''}</div>`;}
+/* Pixel-Editor mit Umschalter „In der Hand“ / „Bild im Inventar“ für 16×16-Items (eigene Items und umgestaltete Vanilla-Items) */
+function spriteZiele(B,o){let ziel='icon',pe=null;
+  const show=px=>p3ShowSprite(px,16);
+  const info=()=>{const t=$('#ziel-info',B),g=$('#gleich',B),eigen=!!handPx(o);
+    if(ziel==='icon')t.textContent=eigen?'So sieht es im Inventar und in der Hotbar aus. In der Hand sieht es anders aus, das malst du unter „In der Hand“.'
+      :'So sieht es im Inventar und in der Hotbar aus. Solange du „In der Hand“ nicht extra bemalst, sieht es in der Hand genauso aus.';
+    else t.textContent=eigen?'So hältst du es im Spiel in der Hand. Das Bild im Inventar bleibt, wie es ist.'
+      :'So hältst du es im Spiel in der Hand. Noch sieht es aus wie im Inventar. Sobald du hier malst, ist es nur in der Hand anders.';
+    g.hidden=ziel!=='hand'||!eigen;};
+  const mount=()=>{B.querySelectorAll('#ziel [data-z]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.z===ziel));
+    const px=ziel==='hand'?handLook(o):o.px;show(px);
+    pe=PixelEditor($('#pe',B),{w:16,h:16,px,onChange:(p,f)=>{if(ziel==='hand')o.hand=p;else o.px=p;show(p);if(f){save();info();}}});info();};
+  mount();
+  $('#ziel',B).onclick=e=>{const b=e.target.closest('[data-z]');if(!b||b.dataset.z===ziel)return;ziel=b.dataset.z;mount();};
+  $('#gleich',B).onclick=()=>{if(!confirm('Soll es in der Hand wieder genauso aussehen wie im Inventar? Was du für die Hand gemalt hast, ist dann weg.'))return;
+    delete o.hand;mount();save();toast('In der Hand sieht es jetzt wieder aus wie im Inventar.');};
+  return{ziel:()=>ziel,load:px=>{if(ziel==='hand')o.hand=px.slice();else o.px=px.slice();pe.set(px);show(px);info();save();}};}
+
 function editItem(B,key){const it=state.items[key],d=ITEMS[key],own=!!it.custom;
   const W=d.kind==='wear'&&WEAR[key];
   const valueField=['ammo','misc','throw','fly','wear'].includes(d.kind)?'':
@@ -1146,10 +1177,10 @@ function editItem(B,key){const it=state.items[key],d=ITEMS[key],own=!!it.custom;
         <div class="row"><button class="btn small" id="std">Standardfarben</button></div></div>`:''}</div>
     ${W?`<div class="col"><div class="card" style="display:grid;gap:10px"><h3>Was malst du?</h3><div class="row" id="ziel">
       <button class="btn" data-z="model" aria-pressed="true">Rucksack</button><button class="btn" data-z="icon" aria-pressed="false">Bild im Inventar</button></div></div>
-      <div class="card" id="pe"></div></div>`:'<div class="col card" id="pe"></div>'}`;
+      <div class="card" id="pe"></div></div>`:`<div class="col">${zielCard('hand','In der Hand',true)}<div class="card" id="pe"></div></div>`}`;
   p3Mount($('#pv',B));
-  let pe,ziel='model';
-  if(!W){p3ShowSprite(it.px,16);pe=PixelEditor($('#pe',B),{w:16,h:16,px:it.px,onChange:(px,f)=>{it.px=px;p3ShowSprite(px,16);if(f)save();}});}
+  let pe,ziel='model',sz=null;
+  if(!W)sz=spriteZiele(B,it);
   else{/* Tragbares Item: entweder den Rucksack selbst bemalen (Bastelbogen wie bei Deko, 3D dreht mit)
        oder das Bild im Inventar (16×16, die 3D-Vorschau zeigt dann dieses Bild). */
     layoutMob(W);let atlas=null,atlasCv=null;
@@ -1171,7 +1202,9 @@ function editItem(B,key){const it=state.items[key],d=ITEMS[key],own=!!it.custom;
   $('#nm',B).oninput=e=>{it.name=cleanName(e.target.value)||d.name;$('.sheet-bar h2').textContent=it.name;save();};
   const v=$('#val',B);if(v)v.oninput=e=>{it.value=+e.target.value;$('#vv',B).textContent=it.value;save();};
   const tl=$('#tool',B);if(tl)tl.onchange=e=>{it.custom.tool=e.target.value;save();};
-  $('#tp',B).onchange=e=>{if(!e.target.value)return;it.px=tplPx(e.target.value);if(!W||ziel==='icon'){pe.set(it.px);p3ShowSprite(it.px,16);}else toast('Das Bild im Inventar ist neu.');save();e.target.value='';};
+  /* Vorlage: bei normalen Items für das, was gerade unter „Was malst du?“ gewählt ist; beim Rucksack immer für das Bild im Inventar */
+  $('#tp',B).onchange=e=>{if(!e.target.value)return;const px=tplPx(e.target.value);
+    if(sz)sz.load(px);else{it.px=px;if(ziel==='icon'){pe.set(it.px);p3ShowSprite(it.px,16);}else toast('Das Bild im Inventar ist neu.');save();}e.target.value='';};
   if(own)deleteRow(B,'Dieses Item wirklich löschen? In Welten, in denen es schon benutzt wurde, verschwindet es nach dem nächsten Paket.',()=>{delete state.items[key];syncCustoms();save();closeSheet();toast('Item gelöscht.');});}
 
 /* Neues eigenes Item anlegen */
@@ -1250,11 +1283,10 @@ function editOverride(B,file){const o=state.overrides[file];
       ${markSwitch(o.on)}
       <label class="field">Neues Aussehen<select id="tp">${tplOptions(TPL16,o.tpl)}</select></label>
 </div></div>
-    <div class="col card" id="pe"></div>`;
-  p3Mount($('#pv',B));p3ShowSprite(o.px,16);
-  const pe=PixelEditor($('#pe',B),{w:16,h:16,px:o.px,onChange:(px,f)=>{o.px=px;p3ShowSprite(px,16);if(f)save();}});
+    <div class="col">${zielCard('hand','In der Hand',true)}<div class="card" id="pe"></div></div>`;
+  p3Mount($('#pv',B));const sz=spriteZiele(B,o);
   $('#on',B).onchange=e=>{o.on=e.target.checked;save();};
-  $('#tp',B).onchange=e=>{o.tpl=e.target.value;o.px=tplPx(o.tpl);pe.set(o.px);p3ShowSprite(o.px,16);save();};}
+  $('#tp',B).onchange=e=>{if(sz.ziel()==='icon')o.tpl=e.target.value;sz.load(tplPx(e.target.value));};}
 
 function editMob(B,key){const m=MOBS[key],s=state.mobs[key];layoutMob(m);
   B.innerHTML=`<div class="col">${previewBlock('<button class="btn small" id="pause" aria-pressed="false">Anhalten</button>')}
@@ -1465,7 +1497,20 @@ function schrotBP(){return{format_version:'1.20.80','minecraft:entity':{descript
 function wurfBP(key){return{format_version:'1.20.80','minecraft:entity':{description:{identifier:'wb:'+key+'_wurf',is_spawnable:false,is_summonable:true,is_experimental:false,runtime_identifier:'minecraft:snowball'},components:{
   'minecraft:collision_box':{width:0.25,height:0.25},'minecraft:physics':{},'minecraft:pushable':{is_pushable:true,is_pushable_by_piston:true},
   'minecraft:projectile':{on_hit:{impact_damage:{damage:0,knockback:true},particle_on_hit:{particle_type:'snowballpoof',num_particles:6,on_entity_hit:true,on_other_hit:true},remove_on_hit:{}},power:1.5,gravity:0.03,angle_offset:0,offset:[0,-0.1,0],anchor:1}}}};}
-const wurfRP=key=>({format_version:'1.10.0','minecraft:client_entity':{description:{identifier:'wb:'+key+'_wurf',materials:{default:'snowball'},textures:{default:'textures/items/wb/'+key},geometry:{default:'geometry.item_sprite'},render_controllers:['controller.render.item_sprite'],animations:{flying:'animation.actor.billboard'},scripts:{animate:['flying']}}}});
+const wurfRP=(key,suf='')=>({format_version:'1.10.0','minecraft:client_entity':{description:{identifier:'wb:'+key+'_wurf',materials:{default:'snowball'},textures:{default:'textures/items/wb/'+key+suf},geometry:{default:'geometry.item_sprite'},render_controllers:['controller.render.item_sprite'],animations:{flying:'animation.actor.billboard'},scripts:{animate:['flying']}}}});
+/* Eigenes Aussehen in der Hand: Attachable mit Texture Mesh (aus dem 16×16-Bild wird ein Item-Modell mit Tiefe, wie Vanilla es
+   aus dem Inventarbild macht). Lage in der Hand wie beim Vanilla-Bogen im Ruhezustand (bow.geo.json, animation.bow.wield in Mojangs
+   bedrock-samples). Gilt für die Haupthand, in der ersten und dritten Person, auch wenn ein Mob das Item hält. */
+const HAND_GEO={format_version:'1.16.0','minecraft:geometry':[{description:{identifier:'geometry.wb_hand_item',texture_width:16,texture_height:16},
+  bones:[{name:'rightitem',texture_meshes:[{texture:'default',position:[2,1,-2],rotation:[0,-135,90],local_pivot:[6,0,6]}]}]}]};
+const HAND_ANIM={format_version:'1.10.0',animations:{'animation.wb.hand_item.wield':{loop:true,bones:{rightitem:{
+  position:['c.is_first_person ? -5.5 : 0.5','c.is_first_person ? -3.0 : -2.5','c.is_first_person ? -3.0 : 1.0'],
+  rotation:['c.is_first_person ? 38.0 : 0.0','c.is_first_person ? -120.0 : 0.0','c.is_first_person ? -63.0 : 0.0']}}}}};
+const handRP=(id,tex)=>({format_version:'1.10.0','minecraft:attachable':{description:{identifier:id,
+  materials:{default:'entity_alphatest',enchanted:'entity_alphatest_glint'},textures:{default:tex,enchanted:'textures/misc/enchanted_item_glint'},
+  geometry:{default:'geometry.wb_hand_item'},animations:{wield:'animation.wb.hand_item.wield'},scripts:{animate:['wield']},render_controllers:['controller.render.item_default']}}});
+/* Dateinamen der Item-Texturen weichen bei zwei Vanilla-Items von der Kennung ab */
+const OV_ID={wood_pickaxe:'minecraft:wooden_pickaxe',gold_pickaxe:'minecraft:golden_pickaxe'};
 /* Fliegen mit dem Drachen: kleines Skript (Script API, stabile Version @minecraft/server 1.15.0, keine Experimente nötig).
    In der Hand halten = langsames Fallen (slow_falling), Benutzen (Tippen) = Windstoß nach oben (levitation). */
 const SCRIPT_API='1.15.0';
@@ -1559,6 +1604,11 @@ async function buildZip(full,mode='alle'){
     if(sel.hud.hotbar){for(let i=0;i<9;i++)await addPng(rp,`textures/ui/hotbar_${i}.png`,hotbarSlot(i,h.hotbar),20,22);
       await addPng(rp,'textures/ui/hotbar_start_cap.png',capPx(h.hotbar),1,22);await addPng(rp,'textures/ui/hotbar_end_cap.png',capPx(h.hotbar),1,22);await addPng(rp,'textures/ui/selected_hotbar_slot.png',selectedPx(h.hotbar),24,24);}
     for(const f of sel.overrides)await addPng(rp,`textures/items/${f}.png`,state.overrides[f].px,16,16);
+    /* Eigenes Aussehen in der Hand (Attachables): umgestaltete Vanilla-Items auch in „Nur Aussehen“, eigene Items nur im Komplettpaket */
+    const haende=[];for(const f of sel.overrides){const hp=handPx(state.overrides[f]);if(hp)haende.push([OV_ID[f]||'minecraft:'+f,'textures/items/wb_hand/'+f,hp]);}
+    if(full)for(const k of sel.items){const hp=ITEMS[k].kind!=='wear'&&handPx(state.items[k]);if(hp)haende.push(['wb:'+k,'textures/items/wb/'+k+'_hand',hp]);}
+    for(const[id,t,px]of haende){await addPng(rp,t+'.png',px,16,16);rp.file(`attachables/${id.replace(':','_')}_hand.json`,J(handRP(id,t)));}
+    if(haende.length){rp.file('models/entity/wb_hand_item.geo.json',J(HAND_GEO));rp.file('animations/wb_hand_item.animation.json',J(HAND_ANIM));}
     /* Vanilla-Blocktexturen überschreiben: gleicher Pfad im Resource Pack ersetzt das Original */
     for(const[p,px]of sel.tex)await addPng(rp,`textures/blocks/${p}.png`,px,16,16);
     if(full){
@@ -1575,7 +1625,7 @@ async function buildZip(full,mode='alle'){
         const ruf=snd.ruf?`wb.${k}.ruf`:null,aua=snd.aua?`wb.${k}.aua`:ruf;if(ruf)ev.ambient=ruf;if(aua){ev.hurt=aua;ev.death=aua;}
         if(Object.keys(ev).length)es['wb:'+k]={volume:1.0,pitch:[0.9,1.1],events:ev};}
       if(items.includes('flinte')||items.includes('patrone'))rp.file('entity/wb_schrot.entity.json',J(schrotRP()));
-      for(const k of wuerfe)rp.file(`entity/wb_${k}_wurf.entity.json`,J(wurfRP(k)));
+      for(const k of wuerfe)rp.file(`entity/wb_${k}_wurf.entity.json`,J(wurfRP(k,handPx(state.items[k])?'_hand':'')));
       for(const k of items.filter(k=>ITEMS[k].kind==='wear'&&WEAR[k])){const a=mobAtlas(k);await addPng(rp,`textures/models/armor/wb_${k}.png`,a.px,a.texW,a.texH);
         rp.file(`models/entity/wb_${k}.geo.json`,J(geoJson(k)));rp.file(`attachables/wb_${k}.json`,J(wearRP(k)));}
       /* Deko-Blöcke: Textur, Modell, Klang, Name */
