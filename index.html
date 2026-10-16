@@ -126,6 +126,8 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--surface);borde
 .grid.klein .slot img,.grid.klein .slot canvas{width:40px;height:40px}
 .grid.klein .name{font-size:13px;max-width:100%;overflow-wrap:anywhere;hyphens:auto}
 .blockfarbe{display:block;width:40px;height:40px;box-shadow:inset 0 0 0 2px rgba(0,0,0,.18),inset 0 0 0 6px rgba(255,255,255,.08)}
+.sk-grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:700px){.sk-grid{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start}}
 .tile.neu{border-style:dashed;color:var(--ink-2)}
 .tile.neu .slot{font-family:var(--font-display);font-size:38px;color:var(--ink-2)}
 .choice{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
@@ -156,7 +158,7 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--surface);borde
 </head><body>
 <div class="wrap">
   <header class="top">
-    <h1>PixelWerkstatt<small>Eigenes Essen, Waffen, Deko, Tiere, Blöcke und Anzeigen für Minecraft auf dem Tablet</small></h1>
+    <h1>PixelWerkstatt<small>Eigenes Essen, Waffen, Deko, Tiere, Blöcke, Skins und Anzeigen für Minecraft auf dem Tablet</small></h1>
   </header>
   <nav class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="anzeige" aria-selected="true">Anzeige</button>
@@ -165,6 +167,7 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--surface);borde
     <button role="tab" data-tab="deko" aria-selected="false">Deko</button>
     <button role="tab" data-tab="tiere" aria-selected="false">Tiere</button>
     <button role="tab" data-tab="bloecke" aria-selected="false">Blöcke</button>
+    <button role="tab" data-tab="skins" aria-selected="false">Skins</button>
     <button role="tab" data-tab="paket" aria-selected="false"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M7 1h2v6h4v2h-2v2H9v1H7v-1H5V9H3V7h4zM1 10h2v3h10v-3h2v5H1z"/></svg>Paket</button>
   </nav>
   <main id="main"></main>
@@ -947,6 +950,7 @@ function render(){const M=$('#main');
       <div class="group"><h2>Eigene Tiere</h2><p class="lead">Erfinde ein eigenes Tier: Wähle eine Bauform wie Fisch, Qualle, Vogel oder Reittier, gib ihm einen Namen und bemale es.</p>
       <div class="grid">${Object.keys(state.mobs).filter(k=>state.mobs[k].custom&&MOBS[k]).map(mobTile).join('')}${newTile('new-mob','Neues Tier')}</div></div></section>`;}
   if(tab==='bloecke')renderBloecke(M);
+  if(tab==='skins')renderSkins(M);
   if(tab==='paket')renderPaket(M);
   if(tab!=='paket'&&tab!=='bloecke')markUi(M,true);
   M.onclick=e=>{const m=e.target.closest('[data-mark]');if(m){markSet(m.dataset.mark,!markGet(m.dataset.mark));save();markRefresh(M);return;}
@@ -1678,6 +1682,206 @@ async function buildZip(full,mode='alle'){
         if(l)bp.file(`loot_tables/wb/${k}.json`,J({pools:[{rolls:1,entries:[{type:'item',name:l,weight:1,functions:[{function:'set_count',count:{min:0,max:2}}]}]}]}));}
     }
     return zip;}
+
+/*SKINS-BEGIN*/
+/* Skins: Skin Pack (.mcpack, Modul "skin_pack") mit Texturen im 64x64-Standardlayout und Geometrie geometry.humanoid.custom (Arme 4 px breit).
+   Eigener Speicher-Schlüssel, damit der Zustand der übrigen Seite (weltbaukasten-v1) unberührt bleibt. */
+const SK_STORE='pixelwerkstatt-skins-v1',SK_PACK='pwskins',SK_GEO='geometry.humanoid.custom';
+const SK_TEILE=[['shirt','T-Shirt'],['jacke','Jacke'],['hose','Hose'],['schuhe','Schuhe'],['muetze','Mütze'],['brille','Brille'],['schal','Schal'],['handschuhe','Handschuhe']];
+const SK_FRISUR={kurz:'Kurz',lang:'Lang',struppig:'Struppig',glatze:'Keine Haare'};
+const SK_HAUT=['#f6d3b3','#e0ac82','#c68a5e','#8d5a3b','#5a3a28','#b9d8a0'];
+const SK_HAARE=['#1c1410','#5a3a22','#a8672d','#e0b24a','#d9d9d9','#c93a6a','#3a7fd6'];
+const SK_FACES=['oben','unten','rechts','vorne','links','hinten'];
+const SK_BOX={kopf:[0,0,8,8,8],kopf2:[32,0,8,8,8],koerper:[16,16,8,12,4],koerper2:[16,32,8,12,4],
+  armR:[40,16,4,12,4],armR2:[40,32,4,12,4],armL:[32,48,4,12,4],armL2:[48,48,4,12,4],
+  beinR:[0,16,4,12,4],beinR2:[0,32,4,12,4],beinL:[16,48,4,12,4],beinL2:[0,48,4,12,4]};
+const SK_FSHADE={oben:.1,unten:-.2,rechts:-.06,vorne:0,links:-.06,hinten:-.04};
+function skinFace(b,f){const[u,v,w,h,d]=b;return{oben:[u+d,v,w,d],unten:[u+d+w,v,w,d],rechts:[u,v+d,d,h],vorne:[u+d,v+d,w,h],links:[u+d+w,v+d,d,h],hinten:[u+2*d+w,v+d,w,h]}[f];}
+function skinDefault(){return{name:'Mein Charakter',haut:'#e0ac82',haare:'#5a3a22',augen:'#3a7fd6',frisur:'kurz',
+  teile:{shirt:true,jacke:false,hose:true,schuhe:true,muetze:false,brille:false,schal:false,handschuhe:false},
+  farben:{shirt:'#3f8fd6',jacke:'#c94a3a',hose:'#3b4a8c',schuhe:'#5a3a22',muetze:'#e3242b',brille:'#222222',schal:'#f08c2a',handschuhe:'#eeeeee'}};}
+const skHex=(v,d)=>/^#[0-9a-f]{6}$/i.test(v||'')?v.toLowerCase():d;
+function skinClean(o){const d=skinDefault();o=o&&typeof o==='object'?o:{};
+  d.name=cleanName(o.name)||d.name;d.haut=skHex(o.haut,d.haut);d.haare=skHex(o.haare,d.haare);d.augen=skHex(o.augen,d.augen);
+  d.frisur=SK_FRISUR[o.frisur]?o.frisur:d.frisur;
+  for(const[k]of SK_TEILE){if(o.teile&&typeof o.teile[k]==='boolean')d.teile[k]=o.teile[k];d.farben[k]=skHex(o.farben&&o.farben[k],d.farben[k]);}
+  return d;}
+/* Zeichnet den Charakter prozedural auf 64x64 Pixel (Array aus '#rrggbb' oder ''). */
+function skinPixels(s){
+  const px=new Array(4096).fill('');const T=s.teile,F=s.farben,UH='#d9d9d9';
+  const P=(name,fn)=>{const b=SK_BOX[name];for(const f of SK_FACES){const[x0,y0,w,h]=skinFace(b,f);
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const k=(y0+y)*64+x0+x;const c=fn(f,x,y,w,h,k);
+      if(c)px[k]=shade(c,SK_FSHADE[f]+(hashRand(k,11)-.5)*.07);}}};
+  const rear=(f,x)=>f==='rechts'?x<=4:f==='links'?x>=3:true;   /* hintere Kopfhälfte der Seitenflächen */
+  /* ---- Kopf: Haut, Gesicht, Haare ---- */
+  P('kopf',(f,x,y)=>{
+    if(f==='vorne'){
+      if(y===4&&(x===1||x===6))return'#ffffff';
+      if(y===4&&(x===2||x===5))return s.augen;
+      if(y===6&&(x===3||x===4))return shade(s.haut,-.32);
+      if(y===3&&(x===1||x===2||x===5||x===6))return s.frisur==='glatze'?shade(s.haut,-.18):shade(s.haare,-.1);
+    }
+    let hair=false;const fr=s.frisur;
+    if(fr==='kurz'){hair=f==='oben'||(f==='vorne'&&(y===0||(y===1&&(x===0||x===7))))||(f==='hinten'&&y<=3)||((f==='rechts'||f==='links')&&(y<=1||(y<=3&&rear(f,x))));}
+    else if(fr==='lang'){hair=f==='oben'||(f==='vorne'&&(y===0||((x===0||x===7)&&y<=5)))||f==='hinten'||((f==='rechts'||f==='links')&&(y<=1||rear(f,x)));}
+    else if(fr==='struppig'){hair=f==='oben'||(f==='vorne'&&(y===0||(y===1&&hashRand(x,3)>.45)))||(f==='hinten'&&y<=3)||((f==='rechts'||f==='links')&&(y<=2||(y<=3&&rear(f,x))));}
+    return hair?shade(s.haare,(hashRand(y*8+x+f.length*64,4)-.5)*.3):s.haut;});
+  /* ---- Körper ---- */
+  P('koerper',(f,x,y)=>{
+    if(T.hose&&y>=8)return F.hose;
+    if(!T.hose&&y>=9)return UH;
+    if(T.shirt&&y<8)return F.shirt;
+    return s.haut;});
+  for(const[n,sl]of[['armR','R'],['armL','L']]){
+    P(n,(f,x,y)=>{
+      if(T.handschuhe&&y>=10)return F.handschuhe;
+      if(T.shirt&&y<=3)return F.shirt;
+      return s.haut;});}
+  for(const n of['beinR','beinL']){
+    P(n,(f,x,y)=>{
+      if(T.schuhe&&y>=10)return y===11||f==='unten'?shade(F.schuhe,-.3):F.schuhe;
+      if(T.hose&&y<=9)return F.hose;
+      if(!T.hose&&y<=3)return UH;
+      return s.haut;});}
+  /* ---- Überzieh-Ebene (zweite Ebene der Textur) ---- */
+  if(T.jacke){
+    P('koerper2',(f,x,y)=>{if(y>10)return'';if(y===0||y===10)return shade(F.jacke,-.22);
+      if(f==='vorne'&&(x===3||x===4))return shade(F.jacke,x===3?.28:-.18);return F.jacke;});
+    for(const n of['armR2','armL2'])P(n,(f,x,y)=>{if(y>10)return'';return y===10?shade(F.jacke,-.22):F.jacke;});}
+  if(T.schal)P('koerper2',(f,x,y)=>{if(y>1)return'';return(x+y)%2?shade(F.schal,-.2):F.schal;});
+  if(T.muetze)P('kopf2',(f,x,y)=>{
+    if(f==='oben')return F.muetze;
+    if(f==='vorne')return y<=1?F.muetze:y===2?shade(F.muetze,-.25):'';
+    return y<=1?F.muetze:y===2?shade(F.muetze,-.25):'';});
+  if(T.brille)P('kopf2',(f,x,y)=>{
+    if(f==='vorne'&&y>=3&&y<=5&&((x<=3&&(x===0||x===3||y===3||y===5))||(x>=4&&(x===4||x===7||y===3||y===5))))return F.brille;
+    if(f==='rechts'&&y===4&&x>=5)return F.brille;
+    if(f==='links'&&y===4&&x<=2)return F.brille;
+    return'';});
+  return px;}
+/* Vorschau: vorne und hinten, gezeichnet aus den Flächen der Textur */
+function skinDraw(cv,px,S,views){
+  views=views||['vorne','hinten'];const tex=pxCanvas(px,64,64);cv.width=(16*views.length+4*(views.length-1))*S;cv.height=32*S;
+  const g=cv.getContext('2d');g.imageSmoothingEnabled=false;g.clearRect(0,0,cv.width,cv.height);
+  views.forEach((v,i)=>{const ox=i*20*S;const front=v==='vorne';
+    const parts=[['kopf',4,0],['koerper',4,8],[front?'armR':'armL',0,8],[front?'armL':'armR',12,8],[front?'beinR':'beinL',4,20],[front?'beinL':'beinR',8,20]];
+    for(const layer of['','2'])for(const[n,x,y]of parts){const b=SK_BOX[n+layer];const[sx,sy,sw,sh]=skinFace(b,v);
+      g.drawImage(tex,sx,sy,sw,sh,ox+x*S,y*S,sw*S,sh*S);}});}
+/* Pack-Dateien (rein, ohne Browser): Manifest, skins.json, Sprachdateien */
+function skinSlug(n){return String(n||'').toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,24);}
+function skinPackFiles(skins,packName,ids,ver){
+  const used=new Set(),slugs=skins.map(s=>{const b=skinSlug(s.name)||'skin';let k=b,i=2;while(used.has(k))k=b+'_'+i++;used.add(k);return k;});
+  const pn=cleanName(packName)||'Meine Charaktere';
+  const PK=SK_PACK+String(ids.h).toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,8);   /* je Pack eindeutige Kennung */
+  const lang=[`skinpack.${PK}=${pn}`,...skins.map((s,i)=>`skin.${PK}.${slugs[i]}=${cleanName(s.name)||slugs[i]}`)].join('\n')+'\n';
+  return{slugs,lang,
+    manifest:{format_version:1,header:{name:pn,description:'Skin Pack aus der PixelWerkstatt',uuid:ids.h,version:ver},modules:[{type:'skin_pack',uuid:ids.m,version:ver}]},
+    skins:{skins:skins.map((s,i)=>({localization_name:slugs[i],geometry:SK_GEO,texture:slugs[i]+'.png',type:'free'})),serialize_name:PK,localization_name:PK}};}
+async function skinZip(skins,packName,ids,ver){
+  const zip=new JSZip(),f=skinPackFiles(skins,packName,ids,ver);
+  zip.file('manifest.json',J(f.manifest));zip.file('skins.json',J(f.skins));
+  zip.file('texts/languages.json',J(['en_US','de_DE']));zip.file('texts/en_US.lang',f.lang);zip.file('texts/de_DE.lang',f.lang);
+  let first=null;
+  for(let i=0;i<skins.length;i++){const c=pxCanvas(skinPixels(skins[i]),64,64);if(!first)first=c;zip.file(f.slugs[i]+'.png',await canvasBlob(c));}
+  if(first){const ic=document.createElement('canvas');ic.width=ic.height=64;const g=ic.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(first,8,8,8,8,0,0,64,64);zip.file('pack_icon.png',await canvasBlob(ic));}
+  return zip;}
+/* Fertige Charaktere. Die Pack-UUIDs sind je Charakter fest, damit ein erneuter Import das Pack ersetzt. */
+const SK_PRESETS=[
+ {n:'Abenteurer',h:'a0f720d4-d54e-4a2d-bab7-ea70fe184ca6',m:'fc67b744-1de3-449e-b267-467eb8012344',s:{haut:'#e0ac82',haare:'#5a3a22',augen:'#3a7fd6',frisur:'kurz',teile:{shirt:true,jacke:true,hose:true,schuhe:true,muetze:false,brille:false,schal:false,handschuhe:false},farben:{shirt:'#e8d8a0',jacke:'#7a5a2d',hose:'#5a4a3a',schuhe:'#3a2a1a'}}},
+ {n:'Bauarbeiter',h:'ea75727c-18f9-48b4-8883-f6d810bbe8f7',m:'83f59096-05ec-451f-8639-c61d3e77012a',s:{haut:'#c68a5e',haare:'#1c1410',augen:'#5a3a22',frisur:'kurz',teile:{shirt:true,jacke:false,hose:true,schuhe:true,muetze:true,brille:false,schal:false,handschuhe:true},farben:{shirt:'#f08c2a',hose:'#3b4a8c',schuhe:'#5a4a3a',muetze:'#f5d63d',handschuhe:'#b8b8b8'}}},
+ {n:'Koch',h:'26092e6f-1545-4537-a4e3-a55e7caac428',m:'332bdbc2-0fe7-455a-9b22-2c07ca61f52f',s:{haut:'#f6d3b3',haare:'#a8672d',augen:'#2c9459',frisur:'kurz',teile:{shirt:false,jacke:true,hose:true,schuhe:true,muetze:true,brille:false,schal:false,handschuhe:false},farben:{jacke:'#f4f4f4',hose:'#3a3a44',schuhe:'#222222',muetze:'#ffffff'}}},
+ {n:'Schneefreund',h:'f4a0b45f-3940-49d4-99c8-68db04d1c0ad',m:'628aad01-9af0-42bd-bc3e-acfaeb359dd1',s:{haut:'#f6d3b3',haare:'#e0b24a',augen:'#3a7fd6',frisur:'lang',teile:{shirt:true,jacke:true,hose:true,schuhe:true,muetze:true,brille:false,schal:true,handschuhe:true},farben:{shirt:'#eeeeee',jacke:'#3a7fd6',hose:'#2a3a5a',schuhe:'#3a3a3a',muetze:'#e3242b',schal:'#e3242b',handschuhe:'#e3242b'}}},
+ {n:'Waldläufer',h:'4c0bcbba-c5e5-412a-99c1-1d03252fe863',m:'eac45c20-faf3-4386-8d90-bf7a8d7d1b63',s:{haut:'#e0ac82',haare:'#1c1410',augen:'#2c9459',frisur:'struppig',teile:{shirt:true,jacke:true,hose:true,schuhe:true,muetze:false,brille:false,schal:false,handschuhe:false},farben:{shirt:'#7a5a2d',jacke:'#2f6b3a',hose:'#4a3a2a',schuhe:'#2a1f14'}}},
+ {n:'Strandfan',h:'4765673f-39bb-4385-8ea2-7541849c5de8',m:'b4cfe8e7-b668-4090-a9d6-4d8bea8829f3',s:{haut:'#c68a5e',haare:'#d9d9d9',augen:'#35c9f0',frisur:'struppig',teile:{shirt:false,jacke:false,hose:false,schuhe:false,muetze:false,brille:true,schal:false,handschuhe:false},farben:{brille:'#e3242b'}}}
+].map(p=>({...p,s:skinClean({...p.s,name:p.n})}));
+const SK_ALLE_IDS={h:'db9f282e-c3b4-46d0-b935-430769e24189',m:'4c67d8cc-9ebc-4bb6-89bd-b8ee48cc2882'};
+/* Speicher (nur dieser Tab, mit Absicherung, falls der Browser nichts speichern lässt) */
+let SK=null;
+function skLoad(){let o=null;try{o=JSON.parse(localStorage.getItem(SK_STORE)||'null');}catch(e){}
+  o=o&&typeof o==='object'?o:{};
+  SK={cur:skinClean(o.cur),liste:(Array.isArray(o.liste)?o.liste:[]).slice(0,24).map(skinClean),packName:cleanName(o.packName)||'Meine Charaktere',
+    ids:o.ids&&o.ids.h&&o.ids.m?o.ids:{h:uuid(),m:uuid()},version:Number.isInteger(o.version)&&o.version>=0?o.version:0};
+  return SK;}
+function skSave(){try{localStorage.setItem(SK_STORE,JSON.stringify(SK));}catch(e){}}
+function skinSendFile(blob,name){let ok=false;
+  try{const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;a.rel='noopener';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),120000);ok=true;}catch(e){}
+  return ok;}
+async function skinDownload(skins,packName,ids,ver,msgEl){
+  const say=(t,ok)=>{if(msgEl)msgEl.innerHTML=`<p class="status" style="margin:0;color:${ok?'var(--accent)':'var(--danger)'}">${esc(t)}</p>`;};
+  if(!window.JSZip){say('Der Paket-Baustein konnte nicht geladen werden. Lade die Seite neu.');return false;}
+  say('Skin Pack wird gebaut …',true);
+  try{const zip=await skinZip(skins,packName,ids,ver);
+    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/octet-stream'});
+    const fn=safeName(cleanName(packName)||'Meine Charaktere')+'.mcpack';
+    if(!skinSendFile(blob,fn)){say('Der Download ließ sich nicht starten. Lade die Seite neu und versuche es nochmal.');return false;}
+    if(msgEl)msgEl.innerHTML=`<div class="note" style="display:grid;gap:6px"><b>Download gestartet: „${esc(fn)}“ (${skins.length} ${skins.length===1?'Charakter':'Charaktere'})</b><span>Tippe unten im Hinweis „Download abgeschlossen“ auf <b>Öffnen</b> und wähle <b>Minecraft</b>. Hinweis verpasst? In der App <b>Dateien</b> → <b>Downloads</b> die Datei antippen.</span></div>`;
+    return true;}catch(e){say('Beim Bauen ist ein Fehler passiert: '+(e&&e.message||e));return false;}}
+function skThumb(s){const c=document.createElement('canvas');skinDraw(c,skinPixels(s),4,['vorne']);return c.toDataURL();}
+function renderSkins(M){
+  if(!SK)skLoad();
+  const col=(k,l,pre)=>`<label class="field">${l}<span class="row"><input type="color" data-k="${k}" value="${SK.cur[k]}" aria-label="${l}">${pre?`<span class="swatches" data-sw="${k}">${pre.map(c=>`<button type="button" style="background:${c}" data-c="${c}" aria-label="Farbe ${c}"></button>`).join('')}</span>`:''}</span></label>`;
+  M.innerHTML=`<section class="panel">
+    <div class="group"><h2>Skins</h2><p class="lead">Baue einen eigenen Charakter: Wähle Farben und zieh Kleidung an oder aus. Du kannst damit in Minecraft herumlaufen, mit anderer Kleidung als sonst. Fertige Charaktere gibt es auch zum Herunterladen.</p></div>
+    <div class="card" style="display:grid;gap:16px">
+      <div class="sk-grid">
+        <div class="col"><div class="card" style="background:var(--surface-2);display:grid;gap:8px;justify-items:center"><canvas id="sk-prev" style="width:100%;max-width:340px;height:auto;image-rendering:pixelated" aria-label="Vorschau deines Charakters, vorne und hinten"></canvas><span class="status">Links von vorn, rechts von hinten</span></div></div>
+        <div class="col">
+          <label class="field">Name des Charakters<input type="text" id="sk-name" maxlength="24" value="${esc(SK.cur.name)}"></label>
+          ${col('haut','Haut',SK_HAUT)}${col('haare','Haare',SK_HAARE)}${col('augen','Augen')}
+          <label class="field">Frisur<select id="sk-frisur">${Object.entries(SK_FRISUR).map(([k,l])=>`<option value="${k}"${SK.cur.frisur===k?' selected':''}>${l}</option>`).join('')}</select></label>
+        </div>
+      </div>
+      <div><h3>Anziehen und ausziehen</h3><p class="status" style="margin:0 0 8px">Tippe auf ein Teil, um es an- oder auszuziehen. Daneben stellst du die Farbe ein.</p>
+        <div class="parts" id="sk-teile">${SK_TEILE.map(([k,l])=>`<div class="part"><button type="button" class="btn small" data-t="${k}" aria-pressed="${SK.cur.teile[k]}">${l}</button><input type="color" data-f="${k}" value="${SK.cur.farben[k]}" aria-label="Farbe ${l}"></div>`).join('')}</div></div>
+      <div class="row"><button class="btn" id="sk-save">Charakter speichern</button><button class="btn" id="sk-rand">Zufällige Farben</button><button class="btn" id="sk-reset">Neu anfangen</button></div>
+    </div>
+    <div class="group"><h2>Fertige Charaktere</h2><p class="lead">Lade einen Charakter zum Weiterbauen in die Werkstatt oder lade ihn direkt als Skin Pack herunter.</p>
+      <div class="grid" id="sk-fertig">${SK_PRESETS.map((p,i)=>`<div class="card" style="display:grid;gap:8px;justify-items:center;text-align:center"><span class="slot" style="width:76px;height:100px"><img alt="" src="${skThumb(p.s)}" style="width:40px;height:80px"></span><b>${esc(p.n)}</b><button class="btn small" data-load="${i}">Bearbeiten</button><button class="btn small" data-dl="${i}">${DL_ICON}Herunterladen</button></div>`).join('')}</div>
+      <div class="row"><button class="btn" id="sk-dlall">${DL_ICON}Alle fertigen Charaktere als ein Skin Pack</button></div></div>
+    <div class="card" style="display:grid;gap:12px"><h2>Mein Skin Pack</h2>
+      <p class="status" style="margin:0">Alle gespeicherten Charaktere kommen in ein Skin Pack. Ist noch keiner gespeichert, kommt der Charakter von oben hinein.</p>
+      <div class="grid klein" id="sk-liste"></div>
+      <label class="field">Name des Skin Packs<input type="text" id="sk-pname" maxlength="32" value="${esc(SK.packName)}"></label>
+      <div class="row"><button class="btn primary" id="sk-dl">${DL_ICON}Skin Pack erstellen</button><span class="chip" id="sk-ver"></span></div><div id="sk-msg"></div></div>
+    <div class="group"><h2>So kommt der Charakter ins Spiel</h2><ol class="steps">
+      <li>Tippe auf <b>Skin Pack erstellen</b> (oder bei einem fertigen Charakter auf <b>Herunterladen</b>).</li>
+      <li>Tippe im Hinweis „Download abgeschlossen“ auf <b>Öffnen</b> und wähle <b>Minecraft</b>. Das Skin Pack wird importiert.</li>
+      <li>In Minecraft: <b>Kleiderschrank</b> (Dressing Room) → <b>Klassische Skins</b> (Classic Skins) → <b>Eigene</b> (Owned) → dein Skin Pack. Wähle den Charakter aus.</li>
+      <li>Du kannst jederzeit einen anderen Skin wählen. Auf Servern und im Mehrspielermodus sehen dich andere mit diesem Skin. Die Arme sind die klassischen breiten Arme (Steve-Form).</li></ol></div>
+  </section>`;
+  const root=M.firstElementChild;const cv=$('#sk-prev');const draw=()=>{try{skinDraw(cv,skinPixels(SK.cur),8);}catch(e){}};
+  const listUi=()=>{const L=$('#sk-liste');
+    L.innerHTML=SK.liste.length?SK.liste.map((s,i)=>`<div class="tile-w"><button class="tile" data-edit="${i}"><span class="slot"><img alt="" src="${skThumb(s)}" style="width:20px;height:40px"></span><span class="name">${esc(s.name)}</span></button><button class="btn small" data-del="${i}" aria-label="${esc(s.name)} entfernen" style="width:100%;margin-top:4px">Entfernen</button></div>`).join(''):'<p class="status" style="grid-column:1/-1;margin:0">Noch nichts gespeichert.</p>';
+    $('#sk-ver').textContent='Version '+(SK.version+1);};
+  const inputsFromCur=()=>{root.querySelectorAll('[data-k]').forEach(i=>i.value=SK.cur[i.dataset.k]);root.querySelectorAll('[data-f]').forEach(i=>i.value=SK.cur.farben[i.dataset.f]);
+    root.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',SK.cur.teile[b.dataset.t]));$('#sk-name').value=SK.cur.name;$('#sk-frisur').value=SK.cur.frisur;};
+  const change=()=>{skSave();draw();};
+  root.oninput=e=>{const t=e.target;
+    if(t.dataset.k){SK.cur[t.dataset.k]=skHex(t.value,SK.cur[t.dataset.k]);change();}
+    else if(t.dataset.f){SK.cur.farben[t.dataset.f]=skHex(t.value,SK.cur.farben[t.dataset.f]);SK.cur.teile[t.dataset.f]=true;const b=root.querySelector(`[data-t="${t.dataset.f}"]`);if(b)b.setAttribute('aria-pressed','true');change();}
+    else if(t.id==='sk-name'){SK.cur.name=cleanName(t.value)||'Mein Charakter';skSave();}
+    else if(t.id==='sk-pname'){SK.packName=cleanName(t.value)||'Meine Charaktere';skSave();}
+    else if(t.id==='sk-frisur'){SK.cur.frisur=SK_FRISUR[t.value]?t.value:'kurz';change();}};
+  root.onclick=async e=>{const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.c){const k=b.parentElement.dataset.sw;SK.cur[k]=b.dataset.c;inputsFromCur();change();return;}
+    if(b.dataset.t){SK.cur.teile[b.dataset.t]=!SK.cur.teile[b.dataset.t];b.setAttribute('aria-pressed',SK.cur.teile[b.dataset.t]);change();return;}
+    if(b.dataset.load!==undefined){SK.cur=skinClean(SK_PRESETS[+b.dataset.load].s);inputsFromCur();change();toast('Der Charakter ist in der Werkstatt. Jetzt kannst du ihn ändern.');window.scrollTo({top:0,behavior:'smooth'});return;}
+    if(b.dataset.dl!==undefined){const p=SK_PRESETS[+b.dataset.dl];await skinDownload([p.s],p.n,{h:p.h,m:p.m},[1,0,0],$('#sk-msg'));return;}
+    if(b.dataset.edit!==undefined){SK.cur=skinClean(SK.liste[+b.dataset.edit]);inputsFromCur();change();toast('Der Charakter ist in der Werkstatt.');window.scrollTo({top:0,behavior:'smooth'});return;}
+    if(b.dataset.del!==undefined){SK.liste.splice(+b.dataset.del,1);skSave();listUi();return;}
+    if(b.id==='sk-save'){const n=SK.cur.name.toLowerCase(),i=SK.liste.findIndex(s=>s.name.toLowerCase()===n);const c=skinClean(SK.cur);
+      if(i>=0)SK.liste[i]=c;else if(SK.liste.length>=24){toast('Du hast schon 24 Charaktere. Entferne erst einen.');return;}else SK.liste.push(c);
+      skSave();listUi();toast(i>=0?'Charakter aktualisiert.':'Charakter gespeichert.');return;}
+    if(b.id==='sk-rand'){const r=()=>hsl2hex(Math.random(),.55+Math.random()*.3,.35+Math.random()*.25);
+      for(const[k]of SK_TEILE){SK.cur.farben[k]=r();SK.cur.teile[k]=Math.random()<.6;}SK.cur.teile.shirt=true;SK.cur.teile.hose=true;SK.cur.teile.schuhe=true;
+      SK.cur.haare=r();SK.cur.augen=r();SK.cur.haut=SK_HAUT[(Math.random()*SK_HAUT.length)|0];SK.cur.frisur=Object.keys(SK_FRISUR)[(Math.random()*4)|0];
+      inputsFromCur();change();return;}
+    if(b.id==='sk-reset'){SK.cur=skinDefault();inputsFromCur();change();return;}
+    if(b.id==='sk-dlall'){await skinDownload(SK_PRESETS.map(p=>p.s),'Fertige Charaktere',SK_ALLE_IDS,[1,0,0],$('#sk-msg'));return;}
+    if(b.id==='sk-dl'){const sk=SK.liste.length?SK.liste:[skinClean(SK.cur)];
+      if(await skinDownload(sk,SK.packName,SK.ids,[1,0,SK.version+1],$('#sk-msg'))){SK.version++;skSave();$('#sk-ver').textContent='Version '+(SK.version+1);}}};
+  draw();listUi();}
+/*SKINS-END*/
 
 render();
 </script>
