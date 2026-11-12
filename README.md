@@ -4,6 +4,8 @@ Web-Werkzeug für **Minecraft Bedrock Edition**: Es baut eigene Add-ons (Behavio
 
 **Öffnen:** https://nikneijm.github.io/PixelWerkstatt/
 
+> **English:** PixelWerkstatt is a free, open-source (MIT) web tool for building **Minecraft Bedrock add-ons** right in the browser: custom items, mobs, blocks, HUD and skin packs, drawn in a touch-friendly pixel editor with live 3D preview and exported as `.mcaddon` / `.mcpack`. No install, no build step, no account, no server: everything runs client-side and stays on the device. Designed so kids can make their own add-ons on an Android tablet, works in any modern browser.
+
 ## Was man damit machen kann
 
 - **HUD und Anzeige:** Herzen, Rüstungsanzeige und Hungerleiste durch eigene 9×9-Icons ersetzen (z. B. Herz, Rüstung, Karotte, Banane) und frei umfärben. XP-Leiste mit eigenen Farben für Balken, leeren Teil und Levelzahl (die Zahl über JSON UI: nur die Farbe von `progress_text_label` in `ui/hud_screen.json`). Hotbar umfärben (Rahmen, Slots, Auswahlrahmen). Fertige Looks färben alles passend zusammen (z. B. Diamant, Gold, Lava), eine Vorschau zeigt die ganze Anzeige wie im Spiel. Im Kreativmodus zeigt Minecraft nur die Hotbar.
@@ -51,5 +53,5 @@ Gut zu wissen: Ein aktives Behavior Pack schaltet Erfolge (Achievements) in dies
 
 - **Inoffiziell:** PixelWerkstatt ist ein inoffizielles Fan-Werkzeug. Es wird nicht von Mojang Studios oder Microsoft hergestellt, genehmigt oder unterstützt. „Minecraft“ ist eine Marke von Mojang Studios bzw. Microsoft. *Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.*
 - **Eigene Inhalte:** Alle Bilder in der Seite sind eigene Pixelzeichnungen oder werden aus Farben erzeugt. Es werden keine Texturen, Modelle oder Sounds aus Minecraft mitgeliefert. Blocknamen und Durchschnittsfarben dienen nur dazu, die Blöcke im Spiel zuzuordnen.
-- **Rechte:** Der Quelltext ist zum Ansehen öffentlich. Kopieren, Verändern und Weitergeben ist ohne Erlaubnis nicht gestattet. Alle Rechte vorbehalten. Die Seite selbst darf jeder benutzen. Für die mitgelieferten Bausteine anderer gelten deren eigene Lizenzen, siehe [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
+- **Lizenz:** Open Source unter der [MIT-Lizenz](LICENSE). Benutzen, Kopieren, Verändern und Weitergeben ist erlaubt, solange der Lizenzhinweis erhalten bleibt. Für die mitgelieferten Bausteine anderer gelten deren eigene Lizenzen, siehe [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
 - **Datenschutz:** Diese Seite sammelt keine Daten und setzt keine Tracker oder Cookies ein. Ausgeliefert wird sie über GitHub Pages. Dabei verarbeitet GitHub technisch bedingt die IP-Adresse der Besucher (siehe Datenschutzerklärung von GitHub).
